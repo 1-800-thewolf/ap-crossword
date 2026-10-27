@@ -94,7 +94,9 @@ class PuzzleSource(TextChoice):
     any: any source in the library
     usa: USA Today (easier, like NYT Monday-Wednesday)
     beq: Brendan Emmett Quigley (harder, like NYT Thursday-Saturday)
+    tny: The New Yorker (medium to hard; Mondays are the hardest)
     tnym: New Yorker Mini (5x5; use with puzzle_size: mini)
+    grdq: Guardian Quick (13x13 British-style grid, straight clues, easy to medium)
     Any other text picks from the library subfolder with that name.
     """
     display_name = "Puzzle Source"
@@ -102,6 +104,8 @@ class PuzzleSource(TextChoice):
     option_usa = 1
     option_beq = 2
     option_tnym = 3
+    option_tny = 4
+    option_grdq = 5
     default = 0
 
 

@@ -12,7 +12,7 @@ Two backward-compatible additions. Items, locations and logic are unchanged, and
 - `CrosswordWorld.fill_slot_data()` adds the result as `slot_data["grid"]`. Clients that don't know about it ignore it.
 
 **2. Random library puzzles.** `puz_file_path` and `puz_file_contents` are now optional. With neither set, `generate_early` picks a random unplayed `.puz` from the host's library (`library.py`).
-- New options: `puzzle_source` (`any`, `usa`, `beq`, `tnym` or any library subfolder name) and `puzzle_size` (`mini`, `daily`, `big`, `any`; default `daily`).
+- New options: `puzzle_source` (`any`, `usa`, `beq`, `tny`, `tnym`, `grdq` or any library subfolder name) and `puzzle_size` (`mini`, `daily`, `big`, `any`; default `daily`).
 - The library folder is a host setting, `crossword_options.library_path` in `host.yaml` (default `crossword_library`).
 - Picked puzzles are added to `played.json` in the library once generation succeeds, and two Crossword slots in one seed never get the same puzzle.
 - The spoiler log names the puzzle.

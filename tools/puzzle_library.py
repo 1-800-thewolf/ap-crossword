@@ -4,7 +4,9 @@ Local library of .puz files for pick-up-and-go Crossword games.
 Bulk sources are limited to sites whose robots.txt allows automated downloads:
   usa  USA Today daily (archive back to 2010, easier, Mon-Wed NYT level)
   beq  Brendan Emmett Quigley (~1,930 puzzles from 2008 on, harder, Thu-Sat NYT level)
+  tny  New Yorker (15x15, archive back to 2018, medium to hard; Mondays hardest)
   tnym New Yorker Mini (5x5 minis, archive back to 2024)
+  grdq Guardian Quick (13x13 British-style, straight clues, numbered archive back to ~2000)
 Downloads are spaced out (POLITE_DELAY) and never repeated.
 """
 import datetime
@@ -23,13 +25,17 @@ USER_AGENT = "Mozilla/5.0 (compatible; ap-crossword-library/1.0)"
 SOURCES = {
     "usa": "USA Today",
     "beq": "Brendan Emmett Quigley",
+    "tny": "New Yorker",
     "tnym": "New Yorker Mini",
+    "grdq": "Guardian Quick",
 }
 SIZES = {"mini": (0, 8), "daily": (9, 17), "big": (18, 99)}
 
 BEQ_SITE = "https://brendanemmettquigley.com"
 # Dated xword-dl sources: walk back day by day until this date or a long run of missing days
-DATED_OLDEST = {"usa": datetime.date(2010, 1, 1), "tnym": datetime.date(2023, 1, 1)}
+DATED_OLDEST = {"usa": datetime.date(2010, 1, 1), "tny": datetime.date(2018, 1, 1),
+                "tnym": datetime.date(2023, 1, 1)}
+GUARDIAN_QUICK_OLDEST = 9000   # numbered archive; #10,000 was 2002
 
 
 # ---------- validation ----------
@@ -73,9 +79,25 @@ def save_if_playable(data: bytes, path: Path) -> bool:
 
 # ---------- bulk stocking ----------
 
+def _add_request_timeouts(seconds: int = 30):
+    # xword-dl's requests have no timeout, so one stalled connection can hang a stock run forever
+    import requests
+    original = requests.Session.request
+    if getattr(original, "_has_default_timeout", False):
+        return
+
+    def request(self, method, url, **kwargs):
+        kwargs.setdefault("timeout", seconds)
+        return original(self, method, url, **kwargs)
+
+    request._has_default_timeout = True
+    requests.Session.request = request
+
+
 def stock(source: str, count: int | None):
     """Download up to `count` new puzzles from `source` (None = everything available)."""
-    puzzles = _stock_beq() if source == "beq" else _stock_by_date(source)
+    _add_request_timeouts()
+    puzzles = {"beq": _stock_beq, "grdq": _stock_guardian_quick}.get(source, lambda: _stock_by_date(source))()
     print(f"Stocking {SOURCES[source]} ({'all' if count is None else count} new puzzles). Ctrl+C stops safely.")
     got = 0
     try:
@@ -87,6 +109,29 @@ def stock(source: str, count: int | None):
     except KeyboardInterrupt:
         print("  stopped.")
     print(f"Added {got} {SOURCES[source]} puzzles. Library now has {len(all_puzzles())}.")
+
+
+def _stock_guardian_quick():
+    # Guardian puzzles are numbered rather than dated; walk down from the latest number
+    from xword_dl import by_keyword, by_url
+
+    folder = LIBRARY / "grdq"
+    latest, _ = by_keyword("grdq")
+    number = int(re.sub(r"\D", "", latest.title))
+    misses = 0
+    while number >= GUARDIAN_QUICK_OLDEST and misses < 30:
+        path = folder / f"grdq-{number}.puz"
+        if not path.exists():
+            try:
+                puzzle, _ = by_url(f"https://www.theguardian.com/crosswords/quick/{number}")
+                misses = 0
+                if save_if_playable(puzzle.tobytes(), path):
+                    yield path.name
+            except Exception as e:
+                misses += 1
+                print(f"  #{number}: {str(e)[:80]}")
+            time.sleep(POLITE_DELAY)
+        number -= 1
 
 
 def _stock_by_date(source: str):
