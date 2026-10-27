@@ -76,7 +76,7 @@ Set up everything else the usual way. The crossword only adds a YAML.
    name: Philip
    game: Crossword
    Crossword:
-     puzzle_source: any      # any, usa (easier), beq (harder), or any library subfolder name
+     puzzle_source: any      # any, usa (easier), beq (harder), tnym (minis), or any library subfolder name
      puzzle_size: daily      # mini, daily (15x15), big (Sunday-size), or any
    ```
 
@@ -104,6 +104,7 @@ Without that entry, it looks in `crossword_library` inside the Archipelago folde
 |---|---|---|
 | `usa`: USA Today daily | ~6,000 (2010 on) | Easier, like NYT Mon–Wed |
 | `beq`: Brendan Emmett Quigley | ~1,930 (2008 on) | Harder, like NYT Thu–Sat |
+| `tnym`: New Yorker Mini | ~200 (2024 on, about two a week) | 5×5 minis; the only source for `puzzle_size: mini` |
 
 Only sources whose `robots.txt` allows automated downloads are used. Puzzles stay on your PC and aren't committed to this repo. The tool can also grab today's free NYT Mini (`nytm`), today's puzzle from other outlets (e.g. `uni`), or NYT puzzles if you have a subscription. It needs Python 3.10–3.13 and uses `uv` if it's installed.
 

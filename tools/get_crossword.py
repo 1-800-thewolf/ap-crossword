@@ -184,10 +184,10 @@ def menu(settings: dict) -> argparse.Namespace:
     ns = argparse.Namespace(what=[], date=None, nyt_login=False, name=None, size=None, lib_from=None, count=None)
     if choice == "1":
         ns.what = ["random"]
-        ns.lib_from = input("Source: usa (easier), beq (harder), blank = any: ").strip() or None
+        ns.lib_from = input("Source: usa (easier), beq (harder), tnym (minis), blank = any: ").strip() or None
         ns.size = input("Size: mini, daily, big, blank = any: ").strip() or None
     elif choice == "2":
-        ns.what = ["stock"] + (input("Sources: usa, beq, blank = both: ").split() or [])
+        ns.what = ["stock"] + (input("Sources: usa, beq, tnym, blank = all: ").split() or [])
         ns.count = input("How many new puzzles per source (number or 'all') [200]: ").strip() or "200"
         return ns
     elif choice == "3":

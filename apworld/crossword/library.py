@@ -52,8 +52,14 @@ def pick_puzzle(library: Path, source: str, size: str, rng) -> tuple[Path, str]:
     rng.shuffle(unplayed)
     path = next((p for p in unplayed if lo <= width_of(p) <= hi), None)
     if path is None:
-        raise FileNotFoundError(f"No unplayed '{size}' puzzles from '{source}' in {library}. "
-                                f"Stock up with get_crossword.bat or change puzzle_source/puzzle_size.")
+        total = sum(1 for folder in folders for p in folder.glob("*.puz") if lo <= width_of(p) <= hi)
+        what = f"'{size}' puzzles from '{source}'"
+        why = (f"All {total} {what} have been played (see {PLAYED_FILE})." if total else
+               f"The library has no {what}. Available folders: "
+               f"{', '.join(d.name for d in sorted(library.iterdir()) if d.is_dir()) or 'none'}.")
+        raise FileNotFoundError(f"{why} Library: {library}. Stock up with get_crossword.bat "
+                                f"(minis come from the 'tnym' source), or change puzzle_source/puzzle_size "
+                                f"in the YAML.")
     rel = path.relative_to(library).as_posix()
     _picked_this_run.add(rel)
     return path, rel

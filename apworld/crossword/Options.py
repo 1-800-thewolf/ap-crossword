@@ -48,12 +48,14 @@ class PuzzleSource(TextChoice):
     any: any source in the library
     usa: USA Today (easier, like NYT Monday-Wednesday)
     beq: Brendan Emmett Quigley (harder, like NYT Thursday-Saturday)
+    tnym: New Yorker Mini (5x5; use with puzzle_size: mini)
     Any other text picks from the library subfolder with that name.
     """
     display_name = "Puzzle Source"
     option_any = 0
     option_usa = 1
     option_beq = 2
+    option_tnym = 3
     default = 0
 
 

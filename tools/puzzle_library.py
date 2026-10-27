@@ -4,6 +4,7 @@ Local library of .puz files for pick-up-and-go Crossword games.
 Bulk sources are limited to sites whose robots.txt allows automated downloads:
   usa  USA Today daily (archive back to 2010, easier, Mon-Wed NYT level)
   beq  Brendan Emmett Quigley (~1,930 puzzles from 2008 on, harder, Thu-Sat NYT level)
+  tnym New Yorker Mini (5x5 minis, archive back to 2024)
 Downloads are spaced out (POLITE_DELAY) and never repeated.
 """
 import datetime
@@ -22,11 +23,13 @@ USER_AGENT = "Mozilla/5.0 (compatible; ap-crossword-library/1.0)"
 SOURCES = {
     "usa": "USA Today",
     "beq": "Brendan Emmett Quigley",
+    "tnym": "New Yorker Mini",
 }
 SIZES = {"mini": (0, 8), "daily": (9, 17), "big": (18, 99)}
 
 BEQ_SITE = "https://brendanemmettquigley.com"
-USA_OLDEST = datetime.date(2010, 1, 1)
+# Dated xword-dl sources: walk back day by day until this date or a long run of missing days
+DATED_OLDEST = {"usa": datetime.date(2010, 1, 1), "tnym": datetime.date(2023, 1, 1)}
 
 
 # ---------- validation ----------
@@ -72,11 +75,11 @@ def save_if_playable(data: bytes, path: Path) -> bool:
 
 def stock(source: str, count: int | None):
     """Download up to `count` new puzzles from `source` (None = everything available)."""
-    fn = {"usa": _stock_usa, "beq": _stock_beq}[source]
+    puzzles = _stock_beq() if source == "beq" else _stock_by_date(source)
     print(f"Stocking {SOURCES[source]} ({'all' if count is None else count} new puzzles). Ctrl+C stops safely.")
     got = 0
     try:
-        for name in fn():
+        for name in puzzles:
             got += 1
             print(f"  [{got}] {name}", flush=True)
             if count is not None and got >= count:
@@ -86,25 +89,27 @@ def stock(source: str, count: int | None):
     print(f"Added {got} {SOURCES[source]} puzzles. Library now has {len(all_puzzles())}.")
 
 
-def _stock_usa():
+def _stock_by_date(source: str):
     from xword_dl import by_keyword
     from xword_dl.util import XWordDLException
 
-    folder = LIBRARY / "usa"
+    folder = LIBRARY / source
     day = datetime.date.today()
     misses = 0
-    while day >= USA_OLDEST and misses < 30:
-        path = folder / f"usa-{day.isoformat()}.puz"
+    while day >= DATED_OLDEST[source] and misses < 30:
+        path = folder / f"{source}-{day.isoformat()}.puz"
         if not path.exists():
             try:
-                puzzle, _ = by_keyword("usa", date=day.isoformat())
+                puzzle, _ = by_keyword(source, date=day.isoformat())
                 misses = 0
                 if save_if_playable(puzzle.tobytes(), path):
                     yield path.name
-            except XWordDLException:
-                misses += 1   # no puzzle that day; a long run of misses means the archive ended
-            except Exception as e:   # network hiccup: skip the day, a later run fills it in
-                print(f"  {day}: {e}")
+            except Exception as e:
+                # No puzzle that day (or a network hiccup a later run fills in);
+                # a long run of misses means the archive ended
+                misses += 1
+                if not isinstance(e, XWordDLException):
+                    print(f"  {day}: {e}")
             time.sleep(POLITE_DELAY)
         day -= datetime.timedelta(days=1)
 
