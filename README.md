@@ -36,8 +36,8 @@ The tool needs Python 3.10–3.13. It uses `uv` if installed, otherwise the `py`
    - Command-line use also works: `get_crossword.bat random --from beq --name Philip`, `get_crossword.bat nytm`, `get_crossword.bat uni`, `get_crossword.bat path\to\file.puz`.
 2. **Generate:** Archipelago Launcher → **Generate**. Output goes to `C:\ProgramData\Archipelago\output\AP_*.zip`.
 3. **Host on archipelago.gg:** go to https://archipelago.gg/uploads and upload the `AP_*.zip`. The room page shows the address, e.g. `archipelago.gg:38281`.
-4. **Everyone connects as usual.** The crossword player opens **https://YOUR-USERNAME.github.io/ap-crossword/** on any phone or computer, then enters the room address and their slot name.
-   - Shortcut: send them `https://YOUR-USERNAME.github.io/ap-crossword/?hostport=archipelago.gg:38281&name=SLOT` and it connects on its own.
+4. **Everyone connects as usual.** The crossword player opens **https://1-800-thewolf.github.io/ap-crossword/** on any phone or computer, then enters the room address and their slot name.
+   - Shortcut: send them `https://1-800-thewolf.github.io/ap-crossword/?hostport=archipelago.gg:38281&name=SLOT` and it connects on its own.
    - In Safari, **Share → Add to Home Screen** makes it open like an app.
 
 ### The site

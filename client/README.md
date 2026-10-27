@@ -2,7 +2,7 @@
 
 A web client for the **Crossword** world in [Archipelago](https://archipelago.gg) multiworld randomizers. Play your crossword slot in any phone or desktop browser, live with everyone else in the multiworld. Nothing to install.
 
-**Play:** https://YOUR-USERNAME.github.io/ap-crossword/
+**Play:** https://1-800-thewolf.github.io/ap-crossword/
 
 ## How to play
 
@@ -16,7 +16,7 @@ Hatched squares belong only to clues that are still locked. To switch between Ac
 ## Share a link that connects right away
 
 ```
-https://YOUR-USERNAME.github.io/ap-crossword/?hostport=archipelago.gg:38281&name=SlotName
+https://1-800-thewolf.github.io/ap-crossword/?hostport=archipelago.gg:38281&name=SlotName
 ```
 
 You can add `&password=...` if the room has one, but anyone with the link then sees it.
