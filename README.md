@@ -38,7 +38,17 @@ https://1-800-thewolf.github.io/ap-crossword/?hostport=archipelago.gg:38281&name
 - Type with the **on-screen keyboard** at the bottom. It's built in, so your phone's keyboard won't cover the grid.
 - A clue is **checked automatically** once every letter is right. It turns green and locks.
 - **Hatched squares** belong only to clues that are still locked. You can still fill them through a crossing clue that's open.
-- **Notifications** pop up when items arrive and new clues unlock.
+- **Notifications** pop up when items arrive, when new clues unlock, and when a clue you solve sends an item to someone ("Sent Hookshot → Alice").
+
+### Feed and Hints
+
+Below the grid are three tabs: **Clues**, **Feed** and **Hints**.
+
+- **Feed:** the multiworld's message log, with real item and location names. **Mine** shows what you sent and received plus hints about you, **Everyone** shows the whole room, and **Chat** shows only chat. The box at the top sends chat and server commands. For example, `!hint Clue Unlock` asks where your next unlock is (it costs hint points like any `!hint`).
+- **Hints:** two lists.
+  - **In your crossword:** clues that hold a hinted item, e.g. "37 Down → Alice's Hookshot · priority". Unlocked clues are listed first; tap one to jump to it.
+  - **Your items elsewhere:** where your Clue Unlocks and Cross Letters are in other players' games.
+- On the grid, a **corner flag** marks the first square of every hinted clue (pink for priority hints), and the clue bar shows what the clue holds.
 - **Rebus squares** (several letters in one square): type only the first letter.
 - On a computer, a physical keyboard works too: letters, Backspace, arrow keys, Tab for the next clue, Space to switch direction.
 
@@ -60,7 +70,17 @@ Your letters are saved on your phone. If the phone sleeps, you switch apps or yo
 Set up everything else the usual way. The crossword only adds a YAML.
 
 1. **Install the apworld once:** copy [`dist/crossword.apworld`](dist/crossword.apworld) into your Archipelago `custom_worlds` folder. Only the person generating needs it; players never do.
-2. **Make the crossword YAML.** On Windows, run `tools/get_crossword.bat` → **1) Random puzzle from my library**. It writes the YAML into your Archipelago `Players` folder and marks the puzzle as played, so you won't get repeats. Or write one yourself with `puz_file_path` (or `puz_file_contents`) pointing at any `.puz` crossword.
+2. **Add a crossword YAML** to the `Players` folder. The short version lets the apworld pick a random unplayed puzzle from your library when you generate:
+
+   ```yaml
+   name: Philip
+   game: Crossword
+   Crossword:
+     puzzle_source: any      # any, usa (easier), beq (harder), or any library subfolder name
+     puzzle_size: daily      # mini, daily (15x15), big (Sunday-size), or any
+   ```
+
+   The same file works game after game, since each generation picks a fresh puzzle and records it in `library/played.json`. The spoiler log names the puzzle that was picked. To choose an exact puzzle instead, set `puz_file_path` to a `.puz` file, or run `tools/get_crossword.bat`, which bakes a puzzle into the YAML.
 3. **Generate** as usual, alongside everyone else's YAMLs.
 4. **Upload** the `AP_*.zip` at https://archipelago.gg/uploads and create a room.
 5. **Send the crossword player** the play link with `?hostport=archipelago.gg:PORT&name=SLOT` filled in.
@@ -69,7 +89,16 @@ Put a password on the room if you don't want strangers wandering in.
 
 ### Puzzle library
 
-`tools/get_crossword.bat` also bulk-downloads puzzles into `library/` (menu option **2**, or `get_crossword.bat stock --count all`). It skips puzzles you already have and filters out grids the world can't handle. Ctrl+C is safe; the next run picks up where it stopped.
+The apworld finds the library through `host.yaml` in your Archipelago folder:
+
+```yaml
+crossword_options:
+  library_path: "C:/path/to/ap-crossword/library"
+```
+
+Without that entry, it looks in `crossword_library` inside the Archipelago folder.
+
+`tools/get_crossword.bat` bulk-downloads puzzles into `library/` (menu option **2**, or `get_crossword.bat stock --count all`). It skips puzzles you already have and filters out grids the world can't handle. Ctrl+C is safe; the next run picks up where it stopped.
 
 | Source | Puzzles | Feel |
 |---|---|---|

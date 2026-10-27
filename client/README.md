@@ -11,6 +11,8 @@ A web client for the **Crossword** world in [Archipelago](https://archipelago.gg
 3. **Clue Unlock** items from other players reveal more clues, and **Cross Letter** items fill in letters, shown in blue.
 4. Solve every clue to complete your goal.
 
+The **Feed** tab shows the room's item log and chat, and takes commands like `!hint Clue Unlock`. The **Hints** tab lists which of your clues hold hinted items and where your items are in other games; hinted clues get a corner flag on the grid.
+
 Hatched squares belong only to clues that are still locked. To switch between Across and Down, tap the selected square again or tap the clue bar. ‹ › jump between open clues.
 
 ## Share a link that connects right away

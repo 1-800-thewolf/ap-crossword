@@ -2,11 +2,13 @@ import base64
 import dataclasses
 from enum import Enum
 import math
+from pathlib import Path
 import random
-from typing import Optional
+from typing import ClassVar, Optional, TextIO
 import zlib
 
 from BaseClasses import Item, ItemClassification, Region, Tutorial
+import settings
 
 from worlds.AutoWorld import WebWorld, World
 from worlds.crossword.Types import Clue, CrossLetter, ParsedPuz, SlotData
@@ -16,6 +18,16 @@ from .Locations import MAX_N_CLUES, CrosswordLocation, get_location_id, location
 
 from .Options import CrosswordOptions
 from .puz_parser import parse_puz, parse_grid_layout
+from . import library
+
+class CrosswordSettings(settings.Group):
+    class LibraryPath(settings.OptionalUserFolderPath):
+        """
+        Folder of .puz crosswords (one subfolder per source, e.g. usa, beq) used when a
+        Crossword YAML has no puzzle file. Fill it with get_crossword.bat stock.
+        """
+
+    library_path: LibraryPath = LibraryPath("crossword_library")
 
 class CrosswordWeb(WebWorld):
     tutorials = [
@@ -61,19 +73,28 @@ class CrosswordWorld(World):
 
     ap_world_version = "0.0.0"
 
+    settings: ClassVar[CrosswordSettings]
+
     parsed_crossword: Optional[ParsedPuz]
+    library_pick: Optional[str] = None   # library-relative path, marked played once generation succeeds
 
     def generate_early(self):
         options: CrosswordOptions = self.options
-        if (bool(options.puz_file_path.value) == bool(options.puz_file_contents.value)):
-            raise Exception("must provide exactly one of puz_file_path or puz_file_contents")
+        if options.puz_file_path.value and options.puz_file_contents.value:
+            raise Exception("provide at most one of puz_file_path or puz_file_contents")
 
-        if options.puz_file_path.value:                
+        if options.puz_file_path.value:
             with open(options.puz_file_path.value, "rb") as f:
                 data = f.read()
-        else:
+        elif options.puz_file_contents.value:
             compressed_data = base64.b64decode(options.puz_file_contents.value)
             data = zlib.decompress(compressed_data)
+        else:
+            library_dir = Path(self.settings.library_path.resolve())
+            source = str(options.puzzle_source.current_key)
+            size = options.puzzle_size.current_key
+            path, self.library_pick = library.pick_puzzle(library_dir, source, size, self.random)
+            data = path.read_bytes()
 
 
         self.puz_data = data
@@ -156,6 +177,17 @@ class CrosswordWorld(World):
         slot_data["grid"] = parse_grid_layout(self.puz_data)
         return slot_data
     
+    def generate_output(self, output_directory: str) -> None:
+        # Only now is the seed certain to exist, so a failed generation doesn't use up the puzzle
+        if self.library_pick:
+            library.mark_played(Path(self.settings.library_path.resolve()), self.library_pick)
+
+    def write_spoiler_header(self, spoiler_handle: TextIO) -> None:
+        grid = parse_grid_layout(self.puz_data)
+        source = f" (library: {self.library_pick})" if self.library_pick else ""
+        spoiler_handle.write(f"Crossword puzzle:                {grid['title']}, "
+                             f"{grid['width']}x{grid['height']}{source}\n")
+
     def get_n_starting(self):
         return max(1, get_perc(self.options.starting_percent.value, len(self.parsed_crossword.clues)))
     # def open_page(url):

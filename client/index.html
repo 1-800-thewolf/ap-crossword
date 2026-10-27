@@ -13,6 +13,7 @@
   --cell: 28px; --cell-bg: #ffffff; --black: #121212; --grid-line: #959595;
   --sel: #ffda00; --inword: #a7d8ff; --locked: #d9d9d9; --reveal: #1a5fd0;
   --done-bg: #eef7ee; --accent: #4f85e5; --ok: #2e8540; --err: #c0392b;
+  --prog: #8b45d6; --useful: #2f6fd6; --filler: #23877c; --hint: #f2a900; --prio: #e0457b;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -20,6 +21,7 @@
     --cell-bg: #e9e9e9; --black: #000000; --grid-line: #555;
     --sel: #e0b800; --inword: #7fb9e6; --locked: #8a8a8a; --reveal: #1546a8;
     --done-bg: #d3e8d3; --accent: #6d9cf0;
+    --prog: #c49bff; --useful: #7fb0ff; --filler: #5fc9bc; --ok: #5cbf6c;
   }
 }
 * { box-sizing: border-box; }
@@ -104,6 +106,50 @@ header button { background: none; border: 0; padding: 4px 6px; font-size: 18px; 
 .clue .boxes .cell { border: 1px solid var(--grid-line); }
 .listmode .clue { flex-wrap: wrap; }
 .listmode .clue .boxes { flex-basis: 100%; padding-left: 36px; }
+.clue .hl, #clueText .hl { display: block; font-size: 12.5px; margin-top: 2px; }
+.clue .hl { color: var(--muted); }
+.cell.hinted::before {
+  content: ""; position: absolute; top: 0; right: 0; pointer-events: none; border-style: solid;
+  border-width: 0 calc(var(--cell) * .34) calc(var(--cell) * .34) 0;
+  border-color: transparent var(--hint) transparent transparent;
+}
+.cell.hinted.prio::before { border-right-color: var(--prio); }
+
+/* ---------- clues / feed / hints tabs ---------- */
+.tabs { display: flex; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.tabs button {
+  flex: 1; background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 4px;
+  font-weight: 600; color: var(--muted); cursor: pointer;
+}
+.tabs button.on { color: var(--fg); border-bottom-color: var(--accent); }
+.badge {
+  display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px;
+  background: var(--accent); color: #fff; font-size: 12px; line-height: 18px;
+}
+.chips { display: flex; gap: 6px; margin: 8px 4px; }
+.chips button {
+  border: 1px solid var(--line); background: none; border-radius: 16px; padding: 5px 12px; font-size: 13px; cursor: pointer;
+}
+.chips button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+#chatForm { display: flex; gap: 6px; margin: 0 4px 6px; }
+#chatInput {
+  flex: 1; min-width: 0; padding: 9px 10px; font-size: 16px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--panel); color: var(--fg);
+}
+#chatForm button { border: 0; border-radius: 8px; background: var(--accent); color: #fff; padding: 0 14px; font-weight: 600; }
+.msg { padding: 7px 8px; border-bottom: 1px solid var(--line); font-size: 14px; line-height: 1.4; border-left: 3px solid transparent; }
+.msg.mine { border-left-color: var(--accent); }
+.msg .pl { font-weight: 600; }
+.msg .pl.me { color: var(--accent); }
+.it.prog { color: var(--prog); font-weight: 600; }
+.it.useful { color: var(--useful); }
+.it.trap { color: var(--err); }
+.it.filler { color: var(--filler); }
+.msg .loc, .hintrow .loc { color: var(--ok); }
+.empty { color: var(--muted); padding: 12px 8px; font-size: 14px; }
+.hintrow { padding: 8px; border-bottom: 1px solid var(--line); font-size: 14px; cursor: pointer; }
+.hintrow.found { opacity: .5; text-decoration: line-through; cursor: default; }
+.hintrow .tag { font-size: 12px; color: var(--muted); margin-left: 4px; }
 
 #cluebar {
   flex: none; display: flex; align-items: stretch; background: var(--inword); color: #121212;
@@ -179,7 +225,30 @@ header button { background: none; border: 0; padding: 4px 6px; font-size: 18px; 
     <span class="stats" id="stats"></span>
     <button id="menuBtn" title="Disconnect" aria-label="Disconnect">⏏</button>
   </header>
-  <div id="main"><div id="board"></div><div id="lists"></div></div>
+  <div id="main">
+    <div id="board"></div>
+    <div id="lists">
+      <div class="tabs" role="tablist">
+        <button data-tab="clues" class="on">Clues</button>
+        <button data-tab="feed">Feed<span class="badge" id="feedBadge" hidden></span></button>
+        <button data-tab="hints">Hints<span class="badge" id="hintBadge" hidden></span></button>
+      </div>
+      <div id="cluePane"></div>
+      <div id="feedPane" hidden>
+        <div class="chips">
+          <button data-filter="mine" class="on">Mine</button>
+          <button data-filter="all">Everyone</button>
+          <button data-filter="chat">Chat</button>
+        </div>
+        <form id="chatForm" autocomplete="off">
+          <input id="chatInput" placeholder="Chat, or !hint Clue Unlock" autocapitalize="off" enterkeyhint="send">
+          <button type="submit">Send</button>
+        </form>
+        <div id="feedList"></div>
+      </div>
+      <div id="hintPane" hidden></div>
+    </div>
+  </div>
   <div id="cluebar">
     <button id="prevBtn" aria-label="Previous clue">‹</button>
     <div id="clueText"></div>
@@ -210,7 +279,7 @@ let game = null;   // puzzle state, built from slot data on Connected
 
 // ================= Connection =================
 
-const net = { ws: null, want: false, connected: false, roomInfo: null, login: null,
+const net = { ws: null, want: false, connected: false, roomInfo: null, login: null, slotInfo: {},
               urls: [], urlIdx: 0, retries: 0, timer: null, players: [] };
 
 function serverUrls(addr) {
@@ -334,7 +403,209 @@ function handlePacket(pkt) {
         refresh();
       }
       break;
+    case 'DataPackage': onDataPackage(pkt); break;
+    case 'PrintJSON': onPrintJSON(pkt); break;
+    case 'Retrieved':
+      if (game && pkt.keys && hintKey() in pkt.keys) setHints(pkt.keys[hintKey()]);
+      break;
+    case 'SetReply':
+      if (game && pkt.key === hintKey()) setHints(pkt.value);
+      break;
   }
+}
+
+// ================= Names (data package) =================
+
+// Item/location ids are per game; the data package maps them to names. Cached per checksum.
+const names = { items: {}, locations: {} };
+const invert = obj => Object.fromEntries(Object.entries(obj || {}).map(([k, v]) => [v, k]));
+
+function requestNames() {
+  const sums = net.roomInfo.datapackage_checksums || {};
+  const games = new Set(Object.values(net.slotInfo).map(s => s.game).concat('Archipelago'));
+  const missing = [];
+  for (const g of games) {
+    const cached = sums[g] && store.get(`apxw:dp:${g}:${sums[g]}`, null);
+    if (cached) addNames(g, cached);
+    else missing.push(g);
+  }
+  if (missing.length) send({ cmd: 'GetDataPackage', games: missing });
+}
+
+function addNames(gameName, data) {
+  names.items[gameName] = invert(data.item_name_to_id);
+  names.locations[gameName] = invert(data.location_name_to_id);
+}
+
+function onDataPackage(pkt) {
+  for (const [g, data] of Object.entries(pkt.data?.games || {})) {
+    addNames(g, data);
+    if (data.checksum) {
+      store.set(`apxw:dp:${g}:${data.checksum}`,
+                { item_name_to_id: data.item_name_to_id, location_name_to_id: data.location_name_to_id });
+    }
+  }
+  if (game) { renderFeed(); renderHints(); render(); }
+}
+
+const gameOf = slot => net.slotInfo[slot]?.game;
+const itemName = (id, ownerSlot) =>
+  names.items[gameOf(ownerSlot)]?.[id] ?? (gameOf(ownerSlot) === 'Crossword' ? ITEM_NAMES[id] : null) ?? `item ${id}`;
+const locationName = (id, ownerSlot) => names.locations[gameOf(ownerSlot)]?.[id] ?? `location ${id}`;
+const flagClass = f => (f & 1 ? 'prog' : f & 2 ? 'useful' : f & 4 ? 'trap' : 'filler');
+
+// ================= Feed =================
+
+const CHAT_TYPES = ['Chat', 'ServerChat', 'CommandResult', 'AdminCommandResult', 'Countdown', 'Tutorial'];
+const feed = { entries: [], filter: 'mine', unread: 0 };
+
+function onPrintJSON(pkt) {
+  if (!game) return;
+  const me = game.slot, t = pkt.type;
+  const involvesMe = pkt.item ? (pkt.item.player === me || pkt.receiving === me) : pkt.slot === me;
+  const entry = {
+    parts: pkt.data || [], chat: CHAT_TYPES.includes(t),
+    mine: involvesMe || t === 'CommandResult' || t === 'AdminCommandResult',
+  };
+  feed.entries.unshift(entry);
+  feed.entries.length = Math.min(feed.entries.length, 300);
+  // What your solved clues sent to other players
+  if (t === 'ItemSend' && pkt.item.player === me && pkt.receiving !== me) {
+    toast(`Sent ${itemName(pkt.item.item, pkt.receiving)} → ${playerName(pkt.receiving)}`);
+  }
+  if (activeTab === 'feed') renderFeed();
+  else if (entry.mine && !entry.chat || t === 'CommandResult') { feed.unread++; renderBadges(); }
+}
+
+function partNode(p) {
+  const span = document.createElement('span');
+  switch (p.type) {
+    case 'player_id': {
+      const slot = Number(p.text);
+      span.textContent = playerName(slot);
+      span.className = 'pl' + (slot === game.slot ? ' me' : '');
+      break;
+    }
+    case 'item_id':
+      span.textContent = itemName(Number(p.text), p.player);
+      span.className = 'it ' + flagClass(p.flags);
+      break;
+    case 'location_id':
+      span.textContent = locationName(Number(p.text), p.player);
+      span.className = 'loc';
+      break;
+    case 'entrance_name':
+      span.textContent = p.text;
+      span.className = 'loc';
+      break;
+    default:
+      span.textContent = p.text ?? '';
+  }
+  return span;
+}
+
+function renderFeed() {
+  const list = $('feedList');
+  list.innerHTML = '';
+  const shown = feed.entries.filter(e => feed.filter === 'all' || (feed.filter === 'chat' ? e.chat : e.mine));
+  for (const e of shown.slice(0, 150)) {
+    const row = document.createElement('div');
+    row.className = 'msg' + (e.mine ? ' mine' : '');
+    e.parts.forEach(p => row.append(partNode(p)));
+    list.append(row);
+  }
+  if (!shown.length) {
+    list.innerHTML = '<div class="empty">Nothing yet. Items you send and receive, hints and chat show up here.</div>';
+  }
+}
+
+// ================= Hints =================
+
+const HINT_STATUS = { 0: '', 10: 'no priority', 20: 'avoid', 30: 'priority', 40: 'found' };
+const hintKey = () => `_read_hints_${game.team}_${game.slot}`;
+
+function setHints(list) {
+  game.hints = Array.isArray(list) ? list : [];
+  // Clues in this crossword that hold hinted items, keyed by location id
+  game.hintByLoc = new Map(game.hints.filter(h => h.finding_player === game.slot && !h.found)
+                                     .map(h => [h.location, h]));
+  renderHints();
+  renderBadges();
+  render();
+}
+
+function hintText(h) {
+  const whose = h.receiving_player === game.slot ? 'your' : `${playerName(h.receiving_player)}'s`;
+  const status = HINT_STATUS[h.status] ? ` · ${HINT_STATUS[h.status]}` : '';
+  return `💡 holds ${whose} ${itemName(h.item, h.receiving_player)}${status}`;
+}
+
+function renderHints() {
+  const pane = $('hintPane');
+  pane.innerHTML = '';
+  if (!game) return;
+  const hints = game.hints || [];
+  // Solvable-now clues first, then locked ones, then already found
+  const wordAt = loc => [...game.words.values()].find(w => w.locId === loc);
+  const rank = h => (h.found ? 2 : wordAt(h.location)?.unlocked ? 0 : 1);
+  const here = hints.filter(h => h.finding_player === game.slot).sort((a, b) => rank(a) - rank(b));
+  const away = hints.filter(h => h.receiving_player === game.slot && h.finding_player !== game.slot)
+                    .sort((a, b) => a.found - b.found);
+  const section = (title, rows, empty) => {
+    const h = document.createElement('h3');
+    h.textContent = title;
+    pane.append(h);
+    if (!rows.length) {
+      const e = document.createElement('div'); e.className = 'empty'; e.textContent = empty; pane.append(e);
+    }
+    rows.forEach(r => pane.append(r));
+  };
+
+  section('In your crossword', here.map(h => {
+    const row = document.createElement('div');
+    row.className = 'hintrow' + (h.found ? ' found' : '');
+    const w = wordAt(h.location);
+    const label = w ? `${w.num} ${w.dir === 'A' ? 'Across' : 'Down'}${w.unlocked ? '' : ' 🔒'}` : locationName(h.location, game.slot);
+    const item = partNode({ type: 'item_id', text: h.item, player: h.receiving_player, flags: h.item_flags });
+    row.append(`${label} → ${h.receiving_player === game.slot ? 'your' : playerName(h.receiving_player) + "'s"} `, item);
+    if (HINT_STATUS[h.status]) { const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = HINT_STATUS[h.status]; row.append(tag); }
+    if (w && !h.found) row.addEventListener('click', () => { showTab('clues'); selectWord(w); });
+    return row;
+  }), 'No one has hinted a clue in your crossword yet.');
+
+  section('Your items elsewhere', away.map(h => {
+    const row = document.createElement('div');
+    row.className = 'hintrow' + (h.found ? ' found' : '');
+    row.style.cursor = 'default';
+    const item = partNode({ type: 'item_id', text: h.item, player: game.slot, flags: h.item_flags });
+    const loc = partNode({ type: 'location_id', text: h.location, player: h.finding_player });
+    row.append(item, ` at ${playerName(h.finding_player)}'s `, loc);
+    return row;
+  }), 'Type !hint Clue Unlock in the Feed to find one.');
+}
+
+// ================= Tabs =================
+
+let activeTab = 'clues';
+
+function showTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  $('cluePane').hidden = tab !== 'clues';
+  $('feedPane').hidden = tab !== 'feed';
+  $('hintPane').hidden = tab !== 'hints';
+  if (tab === 'feed') { feed.unread = 0; renderFeed(); }
+  if (tab === 'hints') renderHints();
+  renderBadges();
+}
+
+function renderBadges() {
+  const fb = $('feedBadge'), hb = $('hintBadge');
+  fb.hidden = !feed.unread;
+  fb.textContent = feed.unread > 99 ? '99+' : feed.unread;
+  const open = game?.hintByLoc ? [...game.hintByLoc.keys()].filter(loc => !game.checked.has(loc)).length : 0;
+  hb.hidden = !open;
+  hb.textContent = open;
 }
 
 function deviceId() {
@@ -351,10 +622,16 @@ function onConnected(pkt) {
   const key = `apxw:${net.roomInfo.seed_name}:${pkt.team}:${pkt.slot}`;
   if (!game || game.key !== key) {
     game = buildGame(pkt.slot_data, key);
+    feed.entries = [];
+    feed.unread = 0;
     buildDom();
   }
   game.slot = pkt.slot;
+  game.team = pkt.team;
   game.connectedAt = Date.now();
+  net.slotInfo = pkt.slot_info || {};
+  requestNames();
+  send({ cmd: 'Get', keys: [hintKey()] }, { cmd: 'SetNotify', keys: [hintKey()] });
   // Server is the source of truth; anything solved offline is re-sent by evaluate()
   game.checked = new Set(pkt.checked_locations);
   game.goalSent = false;
@@ -657,6 +934,7 @@ function handleKey(k) {
 
 document.addEventListener('keydown', e => {
   if (!game || $('game').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target.matches?.('input, textarea')) return;   // typing in the chat box
   const k = e.key;
   if (k.length === 1 && /[a-z0-9]/i.test(k)) handleKey(k.toUpperCase());
   else if (k === 'Backspace' || k === 'Delete') handleKey('BACK');
@@ -724,14 +1002,22 @@ function render() {
     }
     cell.el.className = cls.join(' ');
   }
+  // Corner flag on the first square of every unsolved clue that holds a hinted item
+  for (const w of g.words.values()) {
+    const h = hintOf(w);
+    if (h) g.cells[w.cells[0]].el.classList.add('hinted', ...(h.status === 30 ? ['prio'] : []));
+  }
   renderLists(aw);
   renderClueBar(aw);
+  renderBadges();
   const words = orderedWords();
   $('stats').textContent = `🔓 ${words.filter(w => w.unlocked).length}/${words.length} · ✓ ${words.filter(w => w.done).length}`;
 }
 
+const hintOf = w => (w.hasClue && !w.done && game.hintByLoc?.get(w.locId)) || null;
+
 function renderLists(aw) {
-  const g = game, lists = $('lists');
+  const g = game, lists = $('cluePane');
   lists.innerHTML = '';
   for (const [dir, label] of [['A', 'Across'], ['D', 'Down']]) {
     const h = document.createElement('h3');
@@ -744,6 +1030,8 @@ function renderLists(aw) {
       const num = document.createElement('span'); num.className = 'num'; num.textContent = w.num;
       const txt = document.createElement('span'); txt.className = 'txt';
       txt.textContent = w.unlocked ? w.text : '🔒 Locked';
+      const h = hintOf(w);
+      if (h) { const hl = document.createElement('span'); hl.className = 'hl'; hl.textContent = hintText(h); txt.append(hl); }
       const len = document.createElement('span'); len.className = 'len'; len.textContent = `(${w.cells.length})`;
       row.append(num, txt, len);
       if (g.mode === 'list') {
@@ -773,6 +1061,8 @@ function renderClueBar(aw) {
   const t = document.createElement('span');
   t.textContent = aw.unlocked ? aw.text + (aw.done ? '  ✓' : '')
                               : `🔒 Locked. Clue Unlocks reveal more clues (${aw.cells.length} letters).`;
+  const h = hintOf(aw);
+  if (h) { const hl = document.createElement('span'); hl.className = 'hl'; hl.textContent = hintText(h); t.append(hl); }
   el.append(b, t);
 }
 
@@ -827,6 +1117,19 @@ $('clueText').addEventListener('pointerdown', e => {
 });
 $('menuBtn').addEventListener('click', () => { if (confirm('Disconnect from the server?')) disconnect(); });
 $('connectForm').addEventListener('submit', e => { e.preventDefault(); startConnect(); });
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+document.querySelectorAll('.chips button').forEach(b => b.addEventListener('click', () => {
+  feed.filter = b.dataset.filter;
+  document.querySelectorAll('.chips button').forEach(c => c.classList.toggle('on', c === b));
+  renderFeed();
+}));
+$('chatForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const text = $('chatInput').value.trim();
+  if (!text) return;
+  send({ cmd: 'Say', text });
+  $('chatInput').value = '';
+});
 
 // Prefill from ?hostport=&name=&password= (the original crossword client used these), else last login
 (function init() {

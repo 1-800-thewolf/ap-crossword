@@ -162,7 +162,9 @@ def load_played() -> set[str]:
 def mark_played(path: Path):
     played = load_played() | {path.relative_to(LIBRARY).as_posix()}
     PLAYED_FILE.parent.mkdir(parents=True, exist_ok=True)
-    PLAYED_FILE.write_text(json.dumps(sorted(played), indent=0))
+    tmp = PLAYED_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(sorted(played), indent=0))
+    tmp.replace(PLAYED_FILE)   # atomic, so a generate running at the same time never sees half a file
 
 
 def pick_random(source: str | None = None, size: str | None = None) -> Path | None:
