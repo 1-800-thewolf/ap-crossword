@@ -37,6 +37,9 @@ button { font: inherit; color: inherit; }
 #connect h1 { font-size: 26px; margin: 0 0 4px; }
 #connect p.sub { color: var(--muted); margin: 0 0 24px; }
 #connect label { display: block; font-size: 14px; font-weight: 600; margin: 14px 0 4px; }
+#connect .row { display: flex; gap: 10px; }
+#connect .row .grow { flex: 1; min-width: 0; }
+#connect .row .port { flex: none; width: 96px; }
 #connect input {
   width: 100%; padding: 12px; font-size: 16px; border: 1px solid var(--line); border-radius: 8px;
   background: var(--panel); color: var(--fg);
@@ -147,8 +150,16 @@ header button { background: none; border: 0; padding: 4px 6px; font-size: 18px; 
   <h1>AP Crossword</h1>
   <p class="sub">Archipelago client for the Crossword world</p>
   <form id="connectForm" autocomplete="on">
-    <label for="server">Server</label>
-    <input id="server" placeholder="archipelago.gg:38281" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url">
+    <div class="row">
+      <div class="grow">
+        <label for="server">Server address</label>
+        <input id="server" placeholder="archipelago.gg" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url">
+      </div>
+      <div class="port">
+        <label for="port">Port</label>
+        <input id="port" placeholder="38281" inputmode="numeric" pattern="[0-9]*" maxlength="5" autocomplete="off">
+      </div>
+    </div>
     <label for="slot">Slot name</label>
     <input id="slot" placeholder="Player1" autocapitalize="off" autocorrect="off" spellcheck="false">
     <label for="password">Password (optional)</label>
@@ -156,8 +167,8 @@ header button { background: none; border: 0; padding: 4px 6px; font-size: 18px; 
     <button class="primary" id="connectBtn" type="submit">Connect</button>
   </form>
   <div id="connectError"></div>
-  <p class="hint">Use the server from your archipelago.gg room page, e.g. <code>archipelago.gg:38281</code>.
-    Servers hosted on someone's own PC usually don't support secure connections, so they only work
+  <p class="hint">The port is on your archipelago.gg room page, e.g. <code>archipelago.gg:<b>38281</b></code>.
+    It can change if the room restarts after sitting idle. Servers hosted on someone's own PC usually don't support secure connections, so they only work
     when this page is opened over plain <code>http://</code>.</p>
 </section>
 
@@ -210,10 +221,24 @@ function serverUrls(addr) {
   return location.protocol === 'https:' ? ['wss://' + addr] : ['wss://' + addr, 'ws://' + addr];
 }
 
+// "archipelago.gg:38281" pasted into the address box (or given as ?hostport=) is split apart
+function splitHostPort(text) {
+  text = text.trim().replace(/\/+$/, '');
+  const m = /^(.*):(\d+)$/.exec(text);
+  return m && !/^wss?:\/\/[^:]*$/i.test(m[1]) ? { host: m[1], port: m[2] } : { host: text, port: '' };
+}
+
 function startConnect() {
-  const addr = $('server').value.trim(), name = $('slot').value.trim(), password = $('password').value;
-  if (!addr || !name) return showConnectError('Enter a server and slot name.');
-  store.set('apxw:login', { addr, name });
+  const typed = splitHostPort($('server').value || 'archipelago.gg');
+  const host = typed.host, port = $('port').value.trim() || typed.port;
+  const name = $('slot').value.trim(), password = $('password').value;
+  $('server').value = host;
+  $('port').value = port;
+  if (!name) return showConnectError('Enter your slot name.');
+  if (!port && /(^|\.)archipelago\.gg$/i.test(host)) return showConnectError('Enter the port from your room page.');
+  if (port && !/^\d{1,5}$/.test(port)) return showConnectError('The port is a number, e.g. 38281.');
+  const addr = port ? `${host}:${port}` : host;
+  store.set('apxw:login', { host, port, name });
   showConnectError('');
   $('connectBtn').disabled = true;
   $('connectBtn').textContent = 'Connecting…';
@@ -808,7 +833,12 @@ $('connectForm').addEventListener('submit', e => { e.preventDefault(); startConn
   buildKeyboard();
   const q = new URLSearchParams(location.search);
   const saved = store.get('apxw:login', {});
-  $('server').value = q.get('hostport') || q.get('server') || saved.addr || '';
+  const last = saved.host ? { host: saved.host, port: saved.port || '' } : splitHostPort(saved.addr || '');
+  const linked = splitHostPort(q.get('hostport') || q.get('server') || '');
+  // Address defaults to the last one used (archipelago.gg the first time); the port is kept too
+  // since rejoining the same room is common, but a link's address replaces both
+  $('server').value = linked.host || last.host || 'archipelago.gg';
+  $('port').value = linked.host ? linked.port : last.port;
   $('slot').value = q.get('name') || q.get('slot') || saved.name || '';
   $('password').value = q.get('password') || '';
   if (q.get('hostport') && q.get('name')) startConnect();

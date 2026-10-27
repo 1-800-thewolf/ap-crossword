@@ -21,7 +21,7 @@ You'll usually run out of open clues and wait on your friends' progress, the sam
 You need three things from your host: the **room address** (e.g. `archipelago.gg:38281`), your **slot name**, and the **room password**, if there is one.
 
 1. Open **https://1-800-thewolf.github.io/ap-crossword/** in Safari (iPhone) or Chrome (Android).
-2. Enter the room address, slot name and password.
+2. Enter the **port** from the room page; the address is already filled in as `archipelago.gg`. Then add your slot name and password. Next time, the page remembers the address, port and slot you last used, so you'll usually only need to change the port for a new room. If you play on someone's own server, type its address once and it's remembered too.
 3. Tap **Connect**. The grid appears, and the dot at the top left turns green when you're connected.
 
 **Faster:** your host can send a link that fills everything in and connects right away:
