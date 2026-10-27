@@ -37,8 +37,9 @@ https://1-800-thewolf.github.io/ap-crossword/?hostport=archipelago.gg:38281&name
 - **Tap a square** to select it. **Tap it again**, or tap the clue bar, to switch between Across and Down. Use **‹ ›** to jump between open clues.
 - Type with the **on-screen keyboard** at the bottom. It's built in, so your phone's keyboard won't cover the grid.
 - A clue is **checked automatically** once every letter is right. It turns green and locks.
-- **Hatched squares** belong only to clues that are still locked. You can still fill them through a crossing clue that's open.
-- **Notifications** pop up when items arrive, when new clues unlock, and when a clue you solve sends an item to someone ("Sent Hookshot → Alice").
+- **Hatched squares** belong only to clues that are still locked, but you can type anywhere. If you work out a locked clue from its crossings (or guess it), it counts: the check is sent right away and the clue text appears. This is solving out of logic, the same as sequence-breaking in other Archipelago games.
+- **Notifications** pop up when items arrive, when new clues unlock, and when a clue you solve sends an item to someone ("Sent Hookshot → Alice"). If they get in the way, tick **Hide pop-up notifications** at the top of the Feed tab. Items sent and received still appear in the feed.
+- **Solved words turn green** from end to end.
 
 ### Feed and Hints
 

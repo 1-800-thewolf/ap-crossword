@@ -13,7 +13,7 @@ A web client for the **Crossword** world in [Archipelago](https://archipelago.gg
 
 The **Feed** tab shows the room's item log and chat, and takes commands like `!hint Clue Unlock`. The **Hints** tab lists which of your clues hold hinted items and where your items are in other games; hinted clues get a corner flag on the grid.
 
-Hatched squares belong only to clues that are still locked. To switch between Across and Down, tap the selected square again or tap the clue bar. ‹ › jump between open clues.
+Hatched squares belong only to clues that are still locked, but you can type anywhere: solve a locked clue from its crossings and its check is sent right away. To switch between Across and Down, tap the selected square again or tap the clue bar. ‹ › jump between open clues.
 
 ## Share a link that connects right away
 

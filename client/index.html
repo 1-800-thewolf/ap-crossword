@@ -12,7 +12,7 @@
   --bg: #ffffff; --fg: #121212; --muted: #6b6b6b; --line: #d0d0d0; --panel: #f3f3f3;
   --cell: 28px; --cell-bg: #ffffff; --black: #121212; --grid-line: #959595;
   --sel: #ffda00; --inword: #a7d8ff; --locked: #d9d9d9; --reveal: #1a5fd0;
-  --done-bg: #eef7ee; --accent: #4f85e5; --ok: #2e8540; --err: #c0392b;
+  --done-bg: #bfe5bf; --accent: #4f85e5; --ok: #2e8540; --err: #c0392b;
   --prog: #8b45d6; --useful: #2f6fd6; --filler: #23877c; --hint: #f2a900; --prio: #e0457b;
 }
 @media (prefers-color-scheme: dark) {
@@ -20,7 +20,7 @@
     --bg: #121212; --fg: #ececec; --muted: #9a9a9a; --line: #333; --panel: #1d1d1d;
     --cell-bg: #e9e9e9; --black: #000000; --grid-line: #555;
     --sel: #e0b800; --inword: #7fb9e6; --locked: #8a8a8a; --reveal: #1546a8;
-    --done-bg: #d3e8d3; --accent: #6d9cf0;
+    --done-bg: #a9d8a9; --accent: #6d9cf0;
     --prog: #c49bff; --useful: #7fb0ff; --filler: #5fc9bc; --ok: #5cbf6c;
   }
 }
@@ -126,6 +126,8 @@ header button { background: none; border: 0; padding: 4px 6px; font-size: 18px; 
   display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px;
   background: var(--accent); color: #fff; font-size: 12px; line-height: 18px;
 }
+.opt { display: flex; align-items: center; gap: 8px; margin: 10px 4px 2px; font-size: 14px; color: var(--muted); cursor: pointer; }
+.opt input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
 .chips { display: flex; gap: 6px; margin: 8px 4px; }
 .chips button {
   border: 1px solid var(--line); background: none; border-radius: 16px; padding: 5px 12px; font-size: 13px; cursor: pointer;
@@ -235,6 +237,7 @@ header button { background: none; border: 0; padding: 4px 6px; font-size: 18px; 
       </div>
       <div id="cluePane"></div>
       <div id="feedPane" hidden>
+        <label class="opt"><input type="checkbox" id="hideToasts"> Hide pop-up notifications</label>
         <div class="chips">
           <button data-filter="mine" class="on">Mine</button>
           <button data-filter="all">Everyone</button>
@@ -656,7 +659,7 @@ function onReceivedItems(pkt) {
   }
   const before = new Set(game.unlocked);
   refresh();
-  const fresh = game.clues.filter(c => game.unlocked.has(c.key) && !before.has(c.key))
+  const fresh = game.clues.filter(c => game.unlocked.has(c.key) && !before.has(c.key) && !game.words.get(c.key)?.done)
                           .map(c => `${c.num}${c.dir}`);
   if (!quiet && fresh.length) {
     toast(fresh.length === 1 ? `New clue: ${fresh[0]}` : `${fresh.length} new clues: ${fresh.join(', ')}`);
@@ -786,13 +789,15 @@ function recompute() {
     if (cell.black) continue;
     const ws = wordsOf(cell);
     cell.reveal = g.revealed.has(cell.i);
-    cell.fixed = cell.reveal || ws.some(w => w.done);
+    cell.solved = ws.some(w => w.done);
+    cell.fixed = cell.reveal || cell.solved;
     cell.open = ws.some(w => w.unlocked);
-    cell.editable = cell.open && !cell.fixed;
+    // Locked squares can be typed too: solving a clue you haven't unlocked is allowed (out of logic)
+    cell.editable = !cell.fixed;
   }
 }
 
-// Send checks for every unlocked clue whose letters are all correct
+// Send checks for every clue whose letters are all correct, locked or not
 function evaluate() {
   const g = game;
   const solved = [];
@@ -800,7 +805,7 @@ function evaluate() {
   while (changed) {   // a solved word locks its letters, which can complete crossing words
     changed = false;
     for (const w of g.words.values()) {
-      if (!w.hasClue || !w.unlocked || w.done) continue;
+      if (!w.hasClue || w.done) continue;
       if (w.cells.every(i => g.cells[i].sol && letterAt(g.cells[i]) === g.cells[i].sol)) {
         g.checked.add(w.locId);
         solved.push(w);
@@ -993,8 +998,9 @@ function render() {
     if (cell.black) cls.push('black');
     else {
       if (!cell.open) cls.push('locked');
-      if (cell.fixed && !cell.reveal) cls.push('done');
-      if (cell.reveal) cls.push('reveal');
+      // A solved word is green end to end, including squares a Cross Letter filled in
+      if (cell.solved) cls.push('done');
+      else if (cell.reveal) cls.push('reveal');
       if (cell.circle) cls.push('circle');
       if (inWord.has(cell.i)) cls.push('inword');
       if (cell.i === g.sel) cls.push('sel');
@@ -1024,12 +1030,14 @@ function renderLists(aw) {
     h.textContent = label;
     lists.append(h);
     const words = orderedWords().filter(w => w.dir === dir);
-    for (const w of words.filter(w => w.unlocked)) {
+    // Clues solved before their Clue Unlock arrived are listed too, with their text revealed
+    const shown = words.filter(w => w.unlocked || w.done);
+    for (const w of shown) {
       const row = document.createElement('div');
-      row.className = 'clue' + (w.unlocked ? '' : ' lockd') + (w.done ? ' done' : '') + (w === aw ? ' active' : '');
+      row.className = 'clue' + (w.done ? ' done' : '') + (w === aw ? ' active' : '');
       const num = document.createElement('span'); num.className = 'num'; num.textContent = w.num;
       const txt = document.createElement('span'); txt.className = 'txt';
-      txt.textContent = w.unlocked ? w.text : '🔒 Locked';
+      txt.textContent = w.text;
       const h = hintOf(w);
       if (h) { const hl = document.createElement('span'); hl.className = 'hl'; hl.textContent = hintText(h); txt.append(hl); }
       const len = document.createElement('span'); len.className = 'len'; len.textContent = `(${w.cells.length})`;
@@ -1042,11 +1050,12 @@ function renderLists(aw) {
       row.addEventListener('click', () => selectWord(w));
       lists.append(row);
     }
-    const locked = words.length - words.filter(w => w.unlocked).length;
+    const locked = words.length - shown.length;
     if (locked) {
       const row = document.createElement('div');
       row.className = 'clue lockd';
-      row.textContent = `🔒 ${locked} more ${label.toLowerCase()} clue${locked > 1 ? 's' : ''} locked`;
+      row.textContent = `🔒 ${locked} more ${label.toLowerCase()} clue${locked > 1 ? 's' : ''} locked ` +
+                        `(you can still fill ${locked > 1 ? 'them' : 'it'} in from crossings)`;
       lists.append(row);
     }
   }
@@ -1059,8 +1068,8 @@ function renderClueBar(aw) {
   const b = document.createElement('b');
   b.textContent = aw.num + aw.dir;
   const t = document.createElement('span');
-  t.textContent = aw.unlocked ? aw.text + (aw.done ? '  ✓' : '')
-                              : `🔒 Locked. Clue Unlocks reveal more clues (${aw.cells.length} letters).`;
+  t.textContent = aw.unlocked || aw.done ? aw.text + (aw.done ? '  ✓' : '')
+                              : `🔒 Clue locked. Fill it in from crossings to solve it early (${aw.cells.length} letters).`;
   const h = hintOf(aw);
   if (h) { const hl = document.createElement('span'); hl.className = 'hl'; hl.textContent = hintText(h); t.append(hl); }
   el.append(b, t);
@@ -1083,6 +1092,7 @@ function showConnectError(msg) { $('connectError').textContent = msg; }
 function setDot(state) { $('dot').className = 'dot' + (state === 'on' ? ' on' : state === 'wait' ? ' wait' : ''); }
 
 function toast(msg) {
+  if ($('hideToasts').checked) return;   // items sent and received still show in the Feed tab
   const el = document.createElement('div');
   el.className = 'toast';
   el.textContent = msg;
@@ -1123,6 +1133,11 @@ document.querySelectorAll('.chips button').forEach(b => b.addEventListener('clic
   document.querySelectorAll('.chips button').forEach(c => c.classList.toggle('on', c === b));
   renderFeed();
 }));
+$('hideToasts').checked = store.get('apxw:hideToasts', false);
+$('hideToasts').addEventListener('change', e => {
+  store.set('apxw:hideToasts', e.target.checked);
+  if (e.target.checked) $('toasts').innerHTML = '';
+});
 $('chatForm').addEventListener('submit', e => {
   e.preventDefault();
   const text = $('chatInput').value.trim();
