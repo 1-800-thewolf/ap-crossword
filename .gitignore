@@ -1,0 +1,14 @@
+# Public repo. client/ is published to GitHub Pages by .github/workflows/pages.yml.
+
+# Puzzles are re-downloadable with `get_crossword.bat stock` and aren't ours to redistribute
+library/
+
+# The untouched original apworld; the fork's source is in apworld/
+/crossword.apworld
+
+# Private notes and local state
+drafts/
+.claude/
+tools/.venv/
+tools/settings.json
+__pycache__/

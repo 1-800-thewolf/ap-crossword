@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AP Crossword">
+<title>AP Crossword</title>
+<style>
+:root {
+  --bg: #ffffff; --fg: #121212; --muted: #6b6b6b; --line: #d0d0d0; --panel: #f3f3f3;
+  --cell: 28px; --cell-bg: #ffffff; --black: #121212; --grid-line: #959595;
+  --sel: #ffda00; --inword: #a7d8ff; --locked: #d9d9d9; --reveal: #1a5fd0;
+  --done-bg: #eef7ee; --accent: #4f85e5; --ok: #2e8540; --err: #c0392b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121212; --fg: #ececec; --muted: #9a9a9a; --line: #333; --panel: #1d1d1d;
+    --cell-bg: #e9e9e9; --black: #000000; --grid-line: #555;
+    --sel: #e0b800; --inword: #7fb9e6; --locked: #8a8a8a; --reveal: #1546a8;
+    --done-bg: #d3e8d3; --accent: #6d9cf0;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+button { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+
+/* ---------- connect screen ---------- */
+#connect { max-width: 420px; margin: 0 auto; padding: 32px 16px; }
+#connect h1 { font-size: 26px; margin: 0 0 4px; }
+#connect p.sub { color: var(--muted); margin: 0 0 24px; }
+#connect label { display: block; font-size: 14px; font-weight: 600; margin: 14px 0 4px; }
+#connect input {
+  width: 100%; padding: 12px; font-size: 16px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--panel); color: var(--fg);
+}
+#connect button.primary {
+  width: 100%; margin-top: 22px; padding: 13px; border: 0; border-radius: 8px;
+  background: var(--accent); color: #fff; font-weight: 600; font-size: 17px;
+}
+#connect button.primary:disabled { opacity: .6; }
+#connectError { color: var(--err); margin-top: 14px; min-height: 1.4em; white-space: pre-wrap; }
+#connect .hint { color: var(--muted); font-size: 13px; margin-top: 22px; }
+
+/* ---------- game screen ---------- */
+#game { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+header {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  padding-top: max(8px, env(safe-area-inset-top));
+  border-bottom: 1px solid var(--line); flex: none;
+}
+header .title { font-weight: 700; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+header .stats { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--err); flex: none; }
+.dot.on { background: var(--ok); }
+.dot.wait { background: #e0a000; }
+header button { background: none; border: 0; padding: 4px 6px; font-size: 18px; cursor: pointer; }
+
+#main { flex: 1; overflow-y: auto; padding: 8px 8px 16px; -webkit-overflow-scrolling: touch; }
+#board { display: flex; justify-content: center; }
+.grid {
+  display: grid; background: var(--grid-line); gap: 1px; border: 2px solid var(--black);
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.cell {
+  position: relative; width: var(--cell); height: var(--cell); background: var(--cell-bg); color: #121212;
+  display: flex; align-items: flex-end; justify-content: center;
+  font-size: calc(var(--cell) * .62); font-weight: 500; line-height: 1; padding-bottom: calc(var(--cell) * .08);
+  cursor: pointer;
+}
+.cell .n { position: absolute; top: 1px; left: 2px; font-size: calc(var(--cell) * .3); font-weight: 400; }
+.cell.black { background: var(--black); cursor: default; }
+.cell.circle::after {
+  content: ""; position: absolute; inset: 1px; border: 1px solid #555; border-radius: 50%; pointer-events: none;
+}
+.cell.locked { background: repeating-linear-gradient(135deg, var(--locked) 0 3px, var(--cell-bg) 3px 7px); }
+.cell.done { background: var(--done-bg); }
+.cell.reveal { color: var(--reveal); font-weight: 700; }
+.cell.inword { background: var(--inword); }
+.cell.sel { background: var(--sel); }
+
+#lists { max-width: 640px; margin: 14px auto 0; }
+#lists h3 { margin: 14px 4px 6px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.clue {
+  display: flex; gap: 10px; padding: 8px; border-radius: 6px; cursor: pointer; border-left: 4px solid transparent;
+}
+.clue .num { font-weight: 700; min-width: 26px; text-align: right; }
+.clue .txt { flex: 1; }
+.clue .len { color: var(--muted); font-size: 13px; white-space: nowrap; }
+.clue.lockd { color: var(--muted); cursor: default; }
+.clue.done .txt { color: var(--muted); text-decoration: line-through; }
+.clue.active { background: var(--panel); border-left-color: var(--inword); }
+.clue .boxes { display: flex; flex-wrap: wrap; gap: 1px; margin-top: 6px; }
+.clue .boxes .cell { border: 1px solid var(--grid-line); }
+.listmode .clue { flex-wrap: wrap; }
+.listmode .clue .boxes { flex-basis: 100%; padding-left: 36px; }
+
+#cluebar {
+  flex: none; display: flex; align-items: stretch; background: var(--inword); color: #121212;
+  min-height: 52px; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+#cluebar button { background: none; border: 0; width: 44px; font-size: 26px; cursor: pointer; color: #121212; }
+#clueText { flex: 1; display: flex; align-items: center; padding: 6px 4px; font-size: 15px; cursor: pointer; }
+#clueText b { margin-right: 8px; white-space: nowrap; }
+
+#kbd {
+  flex: none; background: var(--panel); padding: 6px 3px; padding-bottom: max(6px, env(safe-area-inset-bottom));
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.krow { display: flex; justify-content: center; gap: 5px; margin: 5px 0; }
+.key {
+  flex: 1; max-width: 42px; height: 46px; border: 0; border-radius: 5px; background: var(--bg);
+  box-shadow: 0 1px 0 rgba(0,0,0,.25); font-size: 19px; font-weight: 500; padding: 0; cursor: pointer;
+}
+.key.wide { max-width: 64px; flex: 1.5; font-size: 15px; }
+.key:active { background: var(--line); }
+@media (pointer: fine) { #kbd { display: none; } }
+
+@media (min-width: 900px) {
+  #main { display: flex; gap: 24px; justify-content: center; align-items: flex-start; }
+  #lists { margin: 0; flex: 0 1 420px; max-height: calc(100dvh - 140px); overflow-y: auto; }
+  .listmode#main { display: block; }
+  .listmode #lists { max-height: none; margin: 0 auto; }
+}
+
+#toasts {
+  position: fixed; top: max(56px, calc(env(safe-area-inset-top) + 48px)); left: 0; right: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; z-index: 10;
+}
+.toast {
+  background: rgba(20,20,20,.9); color: #fff; padding: 8px 14px; border-radius: 20px; font-size: 14px;
+  max-width: calc(100% - 32px); animation: pop .2s ease-out;
+}
+@keyframes pop { from { transform: translateY(-8px); opacity: 0; } }
+</style>
+</head>
+<body>
+
+<section id="connect">
+  <h1>AP Crossword</h1>
+  <p class="sub">Archipelago client for the Crossword world</p>
+  <form id="connectForm" autocomplete="on">
+    <label for="server">Server</label>
+    <input id="server" placeholder="archipelago.gg:38281" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="url">
+    <label for="slot">Slot name</label>
+    <input id="slot" placeholder="Player1" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <label for="password">Password (optional)</label>
+    <input id="password" type="password" autocomplete="current-password">
+    <button class="primary" id="connectBtn" type="submit">Connect</button>
+  </form>
+  <div id="connectError"></div>
+  <p class="hint">Use the server from your archipelago.gg room page, e.g. <code>archipelago.gg:38281</code>.
+    Servers hosted on someone's own PC usually don't support secure connections, so they only work
+    when this page is opened over plain <code>http://</code>.</p>
+</section>
+
+<section id="game" hidden>
+  <header>
+    <span class="dot" id="dot" title="Connection"></span>
+    <span class="title" id="title">Crossword</span>
+    <span class="stats" id="stats"></span>
+    <button id="menuBtn" title="Disconnect" aria-label="Disconnect">⏏</button>
+  </header>
+  <div id="main"><div id="board"></div><div id="lists"></div></div>
+  <div id="cluebar">
+    <button id="prevBtn" aria-label="Previous clue">‹</button>
+    <div id="clueText"></div>
+    <button id="nextBtn" aria-label="Next clue">›</button>
+  </div>
+  <div id="kbd"></div>
+</section>
+
+<div id="toasts"></div>
+
+<script>
+'use strict';
+
+const ITEM_CLUE_UNLOCK = 1, ITEM_CROSS_LETTER = 2;
+const ITEM_NAMES = { 1: 'Clue Unlock', 2: 'Cross Letter' };
+const DOWN_LOCATION_OFFSET = 10000;   // matches Locations.py LOCATION_OFFSET
+const CLIENT_GOAL = 30;
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(key, fallback) {
+    try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); } catch { return fallback; }
+  },
+  set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} },
+};
+
+let game = null;   // puzzle state, built from slot data on Connected
+
+// ================= Connection =================
+
+const net = { ws: null, want: false, connected: false, roomInfo: null, login: null,
+              urls: [], urlIdx: 0, retries: 0, timer: null, players: [] };
+
+function serverUrls(addr) {
+  addr = addr.trim().replace(/\/+$/, '');
+  if (/^wss?:\/\//i.test(addr)) return [addr];
+  if (!/:\d+$/.test(addr)) addr += ':38281';
+  // https pages may only open wss://; http pages try wss first, then plain ws
+  return location.protocol === 'https:' ? ['wss://' + addr] : ['wss://' + addr, 'ws://' + addr];
+}
+
+function startConnect() {
+  const addr = $('server').value.trim(), name = $('slot').value.trim(), password = $('password').value;
+  if (!addr || !name) return showConnectError('Enter a server and slot name.');
+  store.set('apxw:login', { addr, name });
+  showConnectError('');
+  $('connectBtn').disabled = true;
+  $('connectBtn').textContent = 'Connecting…';
+  net.login = { addr, name, password };
+  net.want = true;
+  net.urls = serverUrls(addr);
+  net.urlIdx = 0;
+  net.retries = 0;
+  openSocket();
+}
+
+function openSocket() {
+  clearTimeout(net.timer);
+  const url = net.urls[net.urlIdx];
+  let opened = false;
+  setDot('wait');
+  let ws;
+  try { ws = new WebSocket(url); } catch (e) { return socketFailed(`Bad server address: ${url}`); }
+  net.ws = ws;
+  ws.onopen = () => { opened = true; };
+  ws.onmessage = e => {
+    let packets;
+    try { packets = JSON.parse(e.data); } catch { return; }
+    for (const pkt of packets) handlePacket(pkt);
+  };
+  ws.onclose = () => {
+    if (net.ws !== ws) return;
+    net.ws = null;
+    net.connected = false;
+    setDot('off');
+    if (!opened && net.urlIdx + 1 < net.urls.length) { net.urlIdx++; return openSocket(); }
+    if (!net.want) return;
+    if (!game) return socketFailed(`Couldn't connect to ${net.login.addr}.` +
+      (location.protocol === 'https:' ? '\nThis page is https, so the server must support secure (wss) connections.' : ''));
+    // Mid-game drop (phone slept, network blip): keep retrying
+    net.urlIdx = 0;
+    const delay = Math.min(30000, 1000 * 2 ** net.retries++);
+    net.timer = setTimeout(openSocket, delay);
+  };
+}
+
+function socketFailed(msg) {
+  net.want = false;
+  showConnectScreen();
+  showConnectError(msg);
+}
+
+function send(...packets) {
+  if (net.ws && net.ws.readyState === WebSocket.OPEN) net.ws.send(JSON.stringify(packets));
+}
+
+function disconnect() {
+  net.want = false;
+  clearTimeout(net.timer);
+  if (net.ws) { const ws = net.ws; net.ws = null; ws.close(); }
+  net.connected = false;
+  game = null;
+  showConnectScreen();
+}
+
+document.addEventListener('visibilitychange', () => {
+  // iOS drops sockets while the tab is in the background; reconnect right away on return
+  if (document.visibilityState === 'visible' && net.want && game && !net.ws) {
+    net.retries = 0;
+    openSocket();
+  }
+});
+
+function handlePacket(pkt) {
+  switch (pkt.cmd) {
+    case 'RoomInfo':
+      net.roomInfo = pkt;
+      send({
+        cmd: 'Connect', game: 'Crossword', name: net.login.name, password: net.login.password || null,
+        uuid: deviceId(), version: { major: 0, minor: 6, build: 0, class: 'Version' },
+        items_handling: 0b111, tags: [], slot_data: true,
+      });
+      break;
+    case 'ConnectionRefused':
+      net.want = false;
+      if (net.ws) net.ws.close();
+      showConnectScreen();
+      showConnectError('Server refused connection: ' + (pkt.errors || ['unknown']).join(', ') +
+        (pkt.errors?.includes('InvalidSlot') ? '\nCheck the slot name.' : '') +
+        (pkt.errors?.includes('InvalidPassword') ? '\nCheck the password.' : ''));
+      break;
+    case 'Connected': onConnected(pkt); break;
+    case 'ReceivedItems': onReceivedItems(pkt); break;
+    case 'RoomUpdate':
+      if (pkt.players) net.players = pkt.players;
+      if (game && pkt.checked_locations) {
+        for (const id of pkt.checked_locations) game.checked.add(id);
+        refresh();
+      }
+      break;
+  }
+}
+
+function deviceId() {
+  let id = store.get('apxw:uuid', null);
+  if (!id) { id = Math.random().toString(36).slice(2) + Date.now().toString(36); store.set('apxw:uuid', id); }
+  return id;
+}
+
+function onConnected(pkt) {
+  net.connected = true;
+  net.retries = 0;
+  net.players = pkt.players || [];
+  setDot('on');
+  const key = `apxw:${net.roomInfo.seed_name}:${pkt.team}:${pkt.slot}`;
+  if (!game || game.key !== key) {
+    game = buildGame(pkt.slot_data, key);
+    buildDom();
+  }
+  game.slot = pkt.slot;
+  game.connectedAt = Date.now();
+  // Server is the source of truth; anything solved offline is re-sent by evaluate()
+  game.checked = new Set(pkt.checked_locations);
+  game.goalSent = false;
+  showGameScreen();
+  refresh();
+}
+
+function onReceivedItems(pkt) {
+  if (!game) return;
+  // The full item list sent right after connecting is old news; don't toast it
+  const quiet = pkt.index === 0 && Date.now() - game.connectedAt < 2000;
+  if (pkt.index === 0) {
+    const known = quiet ? Infinity : game.items.length;
+    game.items = pkt.items.slice();
+    announceItems(pkt.items.slice(known));
+  } else if (pkt.index === game.items.length) {
+    game.items.push(...pkt.items);
+    announceItems(pkt.items);
+  } else {
+    send({ cmd: 'Sync' });
+    return;
+  }
+  const before = new Set(game.unlocked);
+  refresh();
+  for (const c of game.clues) {
+    if (!quiet && game.unlocked.has(c.key) && !before.has(c.key)) {
+      toast(`New clue: ${c.num} ${c.dir === 'A' ? 'Across' : 'Down'}`);
+    }
+  }
+}
+
+function announceItems(items) {
+  for (const it of items) {
+    const from = it.player === game.slot ? 'yourself' : playerName(it.player);
+    toast(`${ITEM_NAMES[it.item] || 'Item ' + it.item} from ${from}`);
+  }
+}
+
+function playerName(slot) {
+  const p = net.players.find(p => p.slot === slot);
+  return p ? (p.alias || p.name) : `player ${slot}`;
+}
+
+// ================= Puzzle model =================
+
+function clueKey(direction, number) { return (direction === 'Down' ? 'D' : 'A') + number; }
+const otherDir = d => (d === 'A' ? 'D' : 'A');
+
+function buildGame(sd, key) {
+  const g = {
+    key, sd, cells: [], words: new Map(), items: [], checked: new Set(), unlocked: new Set(),
+    entries: store.get(key, {}), sel: -1, dir: 'A', mode: 'grid', goalSent: false, connectedAt: 0,
+    title: sd.grid?.title || 'Crossword',
+  };
+  // Clues arrive in the server's unlock order; the first n are visible
+  g.clues = sd.clues.map((c, order) => ({
+    key: clueKey(c.direction, c.number), dir: c.direction === 'Down' ? 'D' : 'A', num: c.number,
+    text: c.clue, answer: String(c.answer).toUpperCase(), order,
+    locId: c.number + (c.direction === 'Down' ? DOWN_LOCATION_OFFSET : 0),
+  }));
+  if (!(sd.grid && buildGridModel(g, sd.grid))) buildListModel(g);
+  return g;
+}
+
+// Number the grid exactly like puz_parser.py does
+function buildGridModel(g, grid) {
+  const W = grid.width, H = grid.height;
+  const open = (r, c) => r >= 0 && c >= 0 && r < H && c < W && grid.layout[r][c] !== '#';
+  const circles = new Set(grid.circles || []);
+  const cells = [];
+  const words = new Map();
+  let n = 1;
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+    const i = r * W + c;
+    cells.push({ i, r, c, black: !open(r, c), num: 0, circle: circles.has(i), A: null, D: null, sol: '' });
+  }
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+    if (!open(r, c)) continue;
+    const across = !open(r, c - 1) && open(r, c + 1);
+    const down = !open(r - 1, c) && open(r + 1, c);
+    if (!across && !down) continue;
+    const num = n++;
+    cells[r * W + c].num = num;
+    if (across) {
+      const w = { key: 'A' + num, dir: 'A', num, cells: [] };
+      for (let cc = c; open(r, cc); cc++) { w.cells.push(r * W + cc); cells[r * W + cc].A = w.key; }
+      words.set(w.key, w);
+    }
+    if (down) {
+      const w = { key: 'D' + num, dir: 'D', num, cells: [] };
+      for (let rr = r; open(rr, c); rr++) { w.cells.push(rr * W + c); cells[rr * W + c].D = w.key; }
+      words.set(w.key, w);
+    }
+  }
+  for (const clue of g.clues) {
+    const w = words.get(clue.key);
+    if (!w || w.cells.length !== clue.answer.length) return false;   // layout doesn't match; fall back to list
+  }
+  for (const w of words.values()) {
+    const clue = g.clues.find(c => c.key === w.key);
+    Object.assign(w, clue ? { hasClue: true, text: clue.text, answer: clue.answer, locId: clue.locId }
+                          : { hasClue: false, text: '(no clue)', answer: '', locId: null });
+    if (clue) w.cells.forEach((ci, k) => { cells[ci].sol = clue.answer[k]; });
+  }
+  g.cells = cells;
+  g.words = words;
+  g.width = W;
+  g.mode = 'grid';
+  return true;
+}
+
+// No grid info (original apworld): every clue gets its own row of boxes
+function buildListModel(g) {
+  const sorted = [...g.clues].sort((a, b) => a.dir.localeCompare(b.dir) || a.num - b.num);
+  for (const clue of sorted) {
+    const w = { key: clue.key, dir: clue.dir, num: clue.num, cells: [], hasClue: true,
+                text: clue.text, answer: clue.answer, locId: clue.locId };
+    for (let k = 0; k < clue.answer.length; k++) {
+      const i = g.cells.length;
+      g.cells.push({ i, black: false, num: k === 0 ? clue.num : 0, circle: false, A: null, D: null, sol: clue.answer[k] });
+      g.cells[i][clue.dir] = clue.key;
+      w.cells.push(i);
+    }
+    g.words.set(w.key, w);
+  }
+  g.mode = 'list';
+}
+
+const wordsOf = cell => [cell.A, cell.D].filter(Boolean).map(k => game.words.get(k));
+const letterAt = cell => (cell.fixed ? cell.sol : game.entries[cell.i] || '');
+const countItems = id => game.items.filter(it => it.item === id).length;
+
+// Apply received items + checked locations to the board
+function recompute() {
+  const g = game, sd = g.sd;
+  const nVisible = Math.min(g.clues.length,
+    sd.n_starting_clues + Math.floor(countItems(ITEM_CLUE_UNLOCK) * sd.clues_per_reward + 1e-9));
+  g.unlocked = new Set(g.clues.slice(0, nVisible).map(c => c.key));
+  const nLetters = Math.min(sd.cross_letters.length,
+    Math.floor(countItems(ITEM_CROSS_LETTER) * sd.cross_letters_per_reward + 1e-9));
+  g.revealed = new Set();
+  for (const cl of sd.cross_letters.slice(0, nLetters)) {
+    const w = g.words.get(clueKey(cl.clue_id.direction, cl.clue_id.number));
+    if (w && w.cells[cl.index] != null) g.revealed.add(w.cells[cl.index]);
+  }
+  for (const w of g.words.values()) {
+    w.unlocked = !w.hasClue || g.unlocked.has(w.key);
+    w.done = w.hasClue && g.checked.has(w.locId);
+  }
+  for (const cell of g.cells) {
+    if (cell.black) continue;
+    const ws = wordsOf(cell);
+    cell.reveal = g.revealed.has(cell.i);
+    cell.fixed = cell.reveal || ws.some(w => w.done);
+    cell.open = ws.some(w => w.unlocked);
+    cell.editable = cell.open && !cell.fixed;
+  }
+}
+
+// Send checks for every unlocked clue whose letters are all correct
+function evaluate() {
+  const g = game;
+  const solved = [];
+  let changed = true;
+  while (changed) {   // a solved word locks its letters, which can complete crossing words
+    changed = false;
+    for (const w of g.words.values()) {
+      if (!w.hasClue || !w.unlocked || w.done) continue;
+      if (w.cells.every(i => g.cells[i].sol && letterAt(g.cells[i]) === g.cells[i].sol)) {
+        g.checked.add(w.locId);
+        solved.push(w);
+        changed = true;
+      }
+    }
+    if (changed) recompute();
+  }
+  if (solved.length) {
+    send({ cmd: 'LocationChecks', locations: solved.map(w => w.locId) });
+    for (const w of solved) toast(`Solved ${w.num} ${w.dir === 'A' ? 'Across' : 'Down'} ✓`);
+  }
+  const all = [...g.words.values()].filter(w => w.hasClue);
+  if (net.connected && !g.goalSent && all.every(w => w.done)) {
+    send({ cmd: 'StatusUpdate', status: CLIENT_GOAL });
+    g.goalSent = true;
+    toast('Puzzle complete! 🎉');
+  }
+  return solved;
+}
+
+function refresh() {
+  if (!game) return;
+  recompute();
+  evaluate();
+  if (game.sel < 0 || game.cells[game.sel].black) {
+    const first = orderedWords().find(w => w.unlocked && !w.done) || orderedWords()[0];
+    if (first) selectWord(first, false);
+  }
+  render();
+}
+
+// ================= Selection & input =================
+
+function orderedWords() {
+  return [...game.words.values()].filter(w => w.hasClue).sort((a, b) => a.dir.localeCompare(b.dir) || a.num - b.num);
+}
+
+function activeWord() {
+  if (!game || game.sel < 0) return null;
+  const cell = game.cells[game.sel];
+  const k = cell[game.dir] || cell[otherDir(game.dir)];
+  return k ? game.words.get(k) : null;
+}
+
+function selectCell(i) {
+  const g = game, cell = g.cells[i];
+  if (!cell || cell.black) return;
+  if (i === g.sel) {
+    if (cell[otherDir(g.dir)]) g.dir = otherDir(g.dir);
+  } else {
+    g.sel = i;
+    if (!cell[g.dir]) g.dir = otherDir(g.dir);
+    else if (!g.words.get(cell[g.dir]).unlocked && cell[otherDir(g.dir)] &&
+             g.words.get(cell[otherDir(g.dir)]).unlocked) g.dir = otherDir(g.dir);
+  }
+  render();
+}
+
+function selectWord(w, doRender = true) {
+  const g = game;
+  g.dir = w.dir;
+  g.sel = w.cells.find(i => g.cells[i].editable && !g.entries[i]) ??
+          w.cells.find(i => g.cells[i].editable) ?? w.cells[0];
+  if (doRender) render();
+}
+
+function stepWord(step) {
+  const list = orderedWords();
+  if (!list.length) return;
+  const cur = list.indexOf(activeWord());
+  for (let k = 1; k <= list.length; k++) {
+    const w = list[(cur + step * k + list.length * k) % list.length];
+    if (w.unlocked && !w.done) return selectWord(w);
+  }
+  selectWord(list[(cur + step + list.length) % list.length]);
+}
+
+function saveEntries() { store.set(game.key, game.entries); }
+
+function typeLetter(ch) {
+  const g = game, w = activeWord();
+  if (!w) return;
+  let p = w.cells.indexOf(g.sel);
+  while (p < w.cells.length && !g.cells[w.cells[p]].editable) p++;
+  if (p >= w.cells.length) return;
+  g.entries[w.cells[p]] = ch;
+  saveEntries();
+  let q = p + 1;
+  while (q < w.cells.length && !g.cells[w.cells[q]].editable) q++;
+  g.sel = q < w.cells.length ? w.cells[q] : w.cells[p];
+  const solved = evaluate();
+  if (solved.includes(w)) stepWord(1);
+  else render();
+}
+
+function backspace() {
+  const g = game, w = activeWord();
+  if (!w) return;
+  if (g.cells[g.sel].editable && g.entries[g.sel]) {
+    delete g.entries[g.sel];
+  } else {
+    let p = w.cells.indexOf(g.sel) - 1;
+    while (p >= 0 && !g.cells[w.cells[p]].editable) p--;
+    if (p >= 0) { g.sel = w.cells[p]; delete g.entries[g.sel]; }
+  }
+  saveEntries();
+  render();
+}
+
+function moveSel(dr, dc) {
+  const g = game;
+  if (g.mode !== 'grid' || g.sel < 0) return;
+  const dir = dc ? 'A' : 'D';
+  if (g.dir !== dir && g.cells[g.sel][dir]) { g.dir = dir; return render(); }
+  let { r, c } = g.cells[g.sel];
+  const H = g.cells.length / g.width;
+  for (;;) {
+    r += dr; c += dc;
+    if (r < 0 || c < 0 || r >= H || c >= g.width) return;
+    const cell = g.cells[r * g.width + c];
+    if (!cell.black) { g.sel = cell.i; if (cell[dir]) g.dir = dir; return render(); }
+  }
+}
+
+function handleKey(k) {
+  if (!game) return;
+  if (k === 'BACK') backspace();
+  else if (/^[A-Z0-9]$/.test(k)) typeLetter(k);
+}
+
+document.addEventListener('keydown', e => {
+  if (!game || $('game').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key;
+  if (k.length === 1 && /[a-z0-9]/i.test(k)) handleKey(k.toUpperCase());
+  else if (k === 'Backspace' || k === 'Delete') handleKey('BACK');
+  else if (k === 'ArrowLeft') moveSel(0, -1);
+  else if (k === 'ArrowRight') moveSel(0, 1);
+  else if (k === 'ArrowUp') moveSel(-1, 0);
+  else if (k === 'ArrowDown') moveSel(1, 0);
+  else if (k === 'Tab' || k === 'Enter') stepWord(e.shiftKey ? -1 : 1);
+  else if (k === ' ') { const c = game.cells[game.sel]; if (c && c[otherDir(game.dir)]) { game.dir = otherDir(game.dir); render(); } }
+  else return;
+  e.preventDefault();
+});
+
+// ================= Rendering =================
+
+function buildDom() {
+  const g = game;
+  $('main').classList.toggle('listmode', g.mode === 'list');
+  $('board').innerHTML = '';
+  g.cells.forEach(cell => {
+    const el = document.createElement('div');
+    el.className = 'cell';
+    el.addEventListener('pointerdown', e => { e.preventDefault(); selectCell(cell.i); });
+    if (cell.num) { const n = document.createElement('span'); n.className = 'n'; n.textContent = cell.num; el.append(n); }
+    el.append(document.createTextNode(''));
+    cell.el = el;
+    cell.letterNode = el.lastChild;
+  });
+  if (g.mode === 'grid') {
+    const gridEl = document.createElement('div');
+    gridEl.className = 'grid';
+    gridEl.style.gridTemplateColumns = `repeat(${g.width}, var(--cell))`;
+    g.cells.forEach(cell => gridEl.append(cell.el));
+    $('board').append(gridEl);
+  }
+  $('title').textContent = g.title;
+  document.title = g.title + ' · AP Crossword';
+  sizeCells();
+}
+
+function sizeCells() {
+  if (!game) return;
+  const avail = Math.min($('main').clientWidth - 20, 640);
+  const size = game.mode === 'grid' ? Math.floor((avail - 4) / game.width) - 1 : 30;
+  document.documentElement.style.setProperty('--cell', Math.max(14, Math.min(size, 64)) + 'px');
+}
+window.addEventListener('resize', sizeCells);
+
+function render() {
+  const g = game;
+  if (!g) return;
+  const aw = activeWord();
+  const inWord = new Set(aw ? aw.cells : []);
+  for (const cell of g.cells) {
+    const cls = ['cell'];
+    if (cell.black) cls.push('black');
+    else {
+      if (!cell.open) cls.push('locked');
+      if (cell.fixed && !cell.reveal) cls.push('done');
+      if (cell.reveal) cls.push('reveal');
+      if (cell.circle) cls.push('circle');
+      if (inWord.has(cell.i)) cls.push('inword');
+      if (cell.i === g.sel) cls.push('sel');
+      cell.letterNode.nodeValue = letterAt(cell);
+    }
+    cell.el.className = cls.join(' ');
+  }
+  renderLists(aw);
+  renderClueBar(aw);
+  const words = orderedWords();
+  $('stats').textContent = `🔓 ${words.filter(w => w.unlocked).length}/${words.length} · ✓ ${words.filter(w => w.done).length}`;
+}
+
+function renderLists(aw) {
+  const g = game, lists = $('lists');
+  lists.innerHTML = '';
+  for (const [dir, label] of [['A', 'Across'], ['D', 'Down']]) {
+    const h = document.createElement('h3');
+    h.textContent = label;
+    lists.append(h);
+    const words = orderedWords().filter(w => w.dir === dir);
+    for (const w of words.filter(w => w.unlocked)) {
+      const row = document.createElement('div');
+      row.className = 'clue' + (w.unlocked ? '' : ' lockd') + (w.done ? ' done' : '') + (w === aw ? ' active' : '');
+      const num = document.createElement('span'); num.className = 'num'; num.textContent = w.num;
+      const txt = document.createElement('span'); txt.className = 'txt';
+      txt.textContent = w.unlocked ? w.text : '🔒 Locked';
+      const len = document.createElement('span'); len.className = 'len'; len.textContent = `(${w.cells.length})`;
+      row.append(num, txt, len);
+      if (g.mode === 'list') {
+        const boxes = document.createElement('div'); boxes.className = 'boxes';
+        w.cells.forEach(i => boxes.append(g.cells[i].el));
+        row.append(boxes);
+      }
+      row.addEventListener('click', () => selectWord(w));
+      lists.append(row);
+    }
+    const locked = words.length - words.filter(w => w.unlocked).length;
+    if (locked) {
+      const row = document.createElement('div');
+      row.className = 'clue lockd';
+      row.textContent = `🔒 ${locked} more ${label.toLowerCase()} clue${locked > 1 ? 's' : ''} locked`;
+      lists.append(row);
+    }
+  }
+}
+
+function renderClueBar(aw) {
+  const el = $('clueText');
+  el.innerHTML = '';
+  if (!aw) return;
+  const b = document.createElement('b');
+  b.textContent = aw.num + aw.dir;
+  const t = document.createElement('span');
+  t.textContent = aw.unlocked ? aw.text + (aw.done ? '  ✓' : '')
+                              : `🔒 Locked. Clue Unlocks reveal more clues (${aw.cells.length} letters).`;
+  el.append(b, t);
+}
+
+// ================= Screens, keyboard, toasts =================
+
+function showConnectScreen() {
+  $('game').hidden = true;
+  $('connect').hidden = false;
+  $('connectBtn').disabled = false;
+  $('connectBtn').textContent = 'Connect';
+}
+function showGameScreen() {
+  $('connect').hidden = true;
+  $('game').hidden = false;
+  sizeCells();
+}
+function showConnectError(msg) { $('connectError').textContent = msg; }
+function setDot(state) { $('dot').className = 'dot' + (state === 'on' ? ' on' : state === 'wait' ? ' wait' : ''); }
+
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  $('toasts').append(el);
+  while ($('toasts').children.length > 4) $('toasts').firstChild.remove();
+  setTimeout(() => el.remove(), 3500);
+}
+
+function buildKeyboard() {
+  const rows = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
+  rows.forEach((letters, r) => {
+    const row = document.createElement('div');
+    row.className = 'krow';
+    for (const ch of letters) row.append(makeKey(ch, ch));
+    if (r === 2) row.append(makeKey('⌫', 'BACK', true));
+    $('kbd').append(row);
+  });
+}
+function makeKey(label, k, wide) {
+  const b = document.createElement('button');
+  b.className = 'key' + (wide ? ' wide' : '');
+  b.textContent = label;
+  b.addEventListener('pointerdown', e => { e.preventDefault(); handleKey(k); });
+  return b;
+}
+
+$('prevBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (game) stepWord(-1); });
+$('nextBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (game) stepWord(1); });
+$('clueText').addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (game && game.sel >= 0 && game.cells[game.sel][otherDir(game.dir)]) { game.dir = otherDir(game.dir); render(); }
+});
+$('menuBtn').addEventListener('click', () => { if (confirm('Disconnect from the server?')) disconnect(); });
+$('connectForm').addEventListener('submit', e => { e.preventDefault(); startConnect(); });
+
+// Prefill from ?hostport=&name=&password= (the original crossword client used these), else last login
+(function init() {
+  buildKeyboard();
+  const q = new URLSearchParams(location.search);
+  const saved = store.get('apxw:login', {});
+  $('server').value = q.get('hostport') || q.get('server') || saved.addr || '';
+  $('slot').value = q.get('name') || q.get('slot') || saved.name || '';
+  $('password').value = q.get('password') || '';
+  if (q.get('hostport') && q.get('name')) startConnect();
+})();
+</script>
+</body>
+</html>
