@@ -1,68 +1,95 @@
-# AP Crossword on your phone
+# AP Crossword
 
-Play the Archipelago **Crossword** world in Safari or Chrome on a phone. It comes with a bulk-downloaded library of NYT-style puzzles, so you can pick one up and go. No app store and no developer account needed.
+Play the **Crossword** world in an Archipelago multiworld from your phone's browser. No app, no install.
 
-| Folder | What it is |
+**▶ Play: https://1-800-thewolf.github.io/ap-crossword/**
+
+## How the Crossword world works
+
+The Crossword world turns a real crossword puzzle into an Archipelago game:
+
+- **Locations = clues.** Every clue you solve is a check, and it can send an item to anyone in the multiworld.
+- **Items = help for your puzzle.** Two kinds are shuffled into the multiworld, so other players find most of them in their games:
+  - **Clue Unlock:** reveals more clues. You start with about 10% of the clues visible.
+  - **Cross Letter:** fills in letters on the grid (shown in blue).
+- **Goal:** solve every clue.
+
+You'll usually run out of open clues and wait on your friends' progress, the same way a locked area in any other Archipelago game waits on items.
+
+## Connecting from your phone
+
+You need three things from your host: the **room address** (e.g. `archipelago.gg:38281`), your **slot name**, and the **room password**, if there is one.
+
+1. Open **https://1-800-thewolf.github.io/ap-crossword/** in Safari (iPhone) or Chrome (Android).
+2. Enter the room address, slot name and password.
+3. Tap **Connect**. The grid appears, and the dot at the top left turns green when you're connected.
+
+**Faster:** your host can send a link that fills everything in and connects right away:
+
+```
+https://1-800-thewolf.github.io/ap-crossword/?hostport=archipelago.gg:38281&name=YourSlot
+```
+
+**Make it feel like an app:** in Safari, **Share → Add to Home Screen**; in Chrome, **⋮ → Add to Home screen**. The page also remembers the last server and slot you used.
+
+### Playing
+
+- **Tap a square** to select it. **Tap it again**, or tap the clue bar, to switch between Across and Down. Use **‹ ›** to jump between open clues.
+- Type with the **on-screen keyboard** at the bottom. It's built in, so your phone's keyboard won't cover the grid.
+- A clue is **checked automatically** once every letter is right. It turns green and locks.
+- **Hatched squares** belong only to clues that are still locked. You can still fill them through a crossing clue that's open.
+- **Notifications** pop up when items arrive and new clues unlock.
+- **Rebus squares** (several letters in one square): type only the first letter.
+- On a computer, a physical keyboard works too: letters, Backspace, arrow keys, Tab for the next clue, Space to switch direction.
+
+### Signal drops and closed tabs
+
+Your letters are saved on your phone. If the phone sleeps, you switch apps or you lose signal, the page reconnects on its own when you come back; the dot turns yellow while it retries. Anything you solved while offline is sent once you're back. Letters are saved per phone and browser, so switching devices mid-game keeps your solved clues (the server tracks those) but not half-filled answers.
+
+### Can't connect?
+
+- **"Couldn't connect":** check the room address and port. Rooms on archipelago.gg get a new port when they restart after being idle, so check the room page for the current one.
+- **"InvalidSlot":** the slot name has to match exactly, including capital letters.
+- **Host runs the server on their own PC:** this site can't connect to that. Browsers only allow a secure (`https`) page to make secure connections, and a home server usually doesn't offer them. Ask the host to use archipelago.gg, or see [Hosting on your own PC](#hosting-on-your-own-pc).
+- **The puzzle shows rows of boxes instead of a grid:** the game was generated with the original Crossword apworld. It's fully playable, just without the grid view. Hosts: use the apworld from this repo to get the grid.
+
+---
+
+## For the host
+
+Set up everything else the usual way. The crossword only adds a YAML.
+
+1. **Install the apworld once:** copy [`dist/crossword.apworld`](dist/crossword.apworld) into your Archipelago `custom_worlds` folder. Only the person generating needs it; players never do.
+2. **Make the crossword YAML.** On Windows, run `tools/get_crossword.bat` → **1) Random puzzle from my library**. It writes the YAML into your Archipelago `Players` folder and marks the puzzle as played, so you won't get repeats. Or write one yourself with `puz_file_path` (or `puz_file_contents`) pointing at any `.puz` crossword.
+3. **Generate** as usual, alongside everyone else's YAMLs.
+4. **Upload** the `AP_*.zip` at https://archipelago.gg/uploads and create a room.
+5. **Send the crossword player** the play link with `?hostport=archipelago.gg:PORT&name=SLOT` filled in.
+
+Put a password on the room if you don't want strangers wandering in.
+
+### Puzzle library
+
+`tools/get_crossword.bat` also bulk-downloads puzzles into `library/` (menu option **2**, or `get_crossword.bat stock --count all`). It skips puzzles you already have and filters out grids the world can't handle. Ctrl+C is safe; the next run picks up where it stopped.
+
+| Source | Puzzles | Feel |
+|---|---|---|
+| `usa`: USA Today daily | ~6,000 (2010 on) | Easier, like NYT Mon–Wed |
+| `beq`: Brendan Emmett Quigley | ~1,930 (2008 on) | Harder, like NYT Thu–Sat |
+
+Only sources whose `robots.txt` allows automated downloads are used. Puzzles stay on your PC and aren't committed to this repo. The tool can also grab today's free NYT Mini (`nytm`), today's puzzle from other outlets (e.g. `uni`), or NYT puzzles if you have a subscription. It needs Python 3.10–3.13 and uses `uv` if it's installed.
+
+### Hosting on your own PC
+
+The public site can't reach a home server (see [Can't connect?](#cant-connect)). For players on the same Wi-Fi as the host, run `tools/serve_client.bat` and have them open the `http://192.168.x.x:8123/` address it prints, with the server address `192.168.x.x:38281`.
+
+---
+
+## About this repo
+
+| Path | What it is |
 |---|---|
-| `dist/crossword.apworld` | The Crossword world, modified to send the grid shape to clients so the phone shows the real grid. Gameplay and generation are unchanged. Source is in `apworld/`. |
-| `client/index.html` | The phone/desktop web client. It's a single file with no build step, published to GitHub Pages. |
-| `tools/get_crossword.bat` | Picks a random puzzle from the library (or downloads one) and writes your player YAML. It also bulk-stocks the library. |
-| `library/` | Downloaded `.puz` puzzles, plus `played.json` so you don't get repeats. Local only; not in git. |
-| `tools/serve_client.bat` | Serves the client to phones on your Wi-Fi. |
+| `client/` | The web client: a single `index.html` with no build step. GitHub Pages publishes it automatically on every push that changes it. |
+| `apworld/`, `dist/` | The grid-aware fork of the Crossword world, as source and as the built `.apworld`. |
+| `tools/` | The YAML maker, puzzle library and local web server. |
 
-The Crossword world is by **jm771 (JHeard)**: https://github.com/jm771/apworld_crossword. It's MIT licensed, and this repo is a fork of it. See [apworld/README.md](apworld/README.md) for exactly what changed. The web client and tools are new code.
-
-## One-time setup
-
-1. Copy `dist/crossword.apworld` into `C:\ProgramData\Archipelago\custom_worlds\`. This is already done on this PC.
-2. **Stock the puzzle library:** `get_crossword.bat`, option **2**, or `get_crossword.bat stock --count all`. It downloads in bulk, about 1.5 s per puzzle, and skips puzzles you already have. Stop it any time with Ctrl+C; the next run picks up where it left off.
-
-   | Source | Puzzles | Feel |
-   |---|---|---|
-   | `usa`: USA Today daily | ~6,000 (back to 2010) | Easier, like NYT Mon–Wed |
-   | `beq`: Brendan Emmett Quigley | ~1,930 (2008 on) | Harder, like NYT Thu–Sat; Monday themelesses |
-
-   These are the free sources whose `robots.txt` allows automated downloads. Herbach's archive (WSJ, Universal) is linked from Crossword Fiend and Daily Crossword Links, but it blocks bots, so it isn't used. Puzzles that don't fit the Crossword world (diagramless and other odd grids) are skipped automatically.
-3. **NYT Mini (optional):** free, no login. Menu option 3, or `get_crossword.bat nytm`, grabs the current Mini. NYT posts the next day's Mini in the evening, so you may get tomorrow's.
-4. **Full NYT puzzles (optional):** you need your own NYT Games subscription. Menu option **7** explains how to copy your `NYT-S` cookie from a logged-in browser.
-
-The tool needs Python 3.10–3.13. It uses `uv` if installed, otherwise the `py` launcher.
-
-## Each game
-
-1. **Get a puzzle:** double-click `tools/get_crossword.bat` and choose **1) Random puzzle from my library**. You can filter by source (`usa` easier, `beq` harder) and size (`mini`, `daily`, `big`). It writes `Crossword - <name>.yaml` into `C:\ProgramData\Archipelago\Players\` and marks the puzzle as played.
-   - Generate uses *every* YAML in that folder, so move out any you don't want in this game.
-   - Other players' YAMLs go in the same folder as usual for a multiworld.
-   - Command-line use also works: `get_crossword.bat random --from beq --name Philip`, `get_crossword.bat nytm`, `get_crossword.bat uni`, `get_crossword.bat path\to\file.puz`.
-2. **Generate:** Archipelago Launcher → **Generate**. Output goes to `C:\ProgramData\Archipelago\output\AP_*.zip`.
-3. **Host on archipelago.gg:** go to https://archipelago.gg/uploads and upload the `AP_*.zip`. The room page shows the address, e.g. `archipelago.gg:38281`.
-4. **Everyone connects as usual.** The crossword player opens **https://1-800-thewolf.github.io/ap-crossword/** on any phone or computer, then enters the room address and their slot name.
-   - Shortcut: send them `https://1-800-thewolf.github.io/ap-crossword/?hostport=archipelago.gg:38281&name=SLOT` and it connects on its own.
-   - In Safari, **Share → Add to Home Screen** makes it open like an app.
-
-### The site
-
-This repo is public on GitHub as `ap-crossword`. `.github/workflows/pages.yml` publishes the `client/` folder to GitHub Pages on every push that changes it, which takes a minute or two. Puzzles, drafts and local tool state are left out by `.gitignore`.
-
-One-time GitHub setup: repo **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-
-The page holds nothing secret: without a room address, slot name and room password, it's just an empty connect form. Put a password on your archipelago.gg room to keep strangers out of the game.
-
-### Fallback: hosting on this PC
-
-The Launcher's **Host** works, but the public https site can't connect to it, because browsers only allow secure connections from secure pages. Run `tools/serve_client.bat` instead and open the `http://192.168.x.x:8123/` address it prints. That only works for a crossword player on the same Wi-Fi. They use the server address `192.168.x.x:38281`.
-
-## How it plays
-
-- Hatched squares belong only to locked clues. Solve unlocked clues to send checks.
-- **Clue Unlock** items reveal more clues; **Cross Letter** items fill in blue letters.
-- A clue is checked automatically when every letter is right. Solved words turn green and lock.
-- When every clue is solved, the client tells the server your goal is complete.
-- Controls: tap a square to select it; tap it again or tap the clue bar to switch Across/Down; ‹ › jump between open clues.
-- Your typed letters are saved on the device, so closing the tab or losing signal is fine. It reconnects on its own.
-- **Rebus squares** (several letters in one square): type only the first letter. The world stores only the first letter.
-
-## Notes
-
-- The client sends Archipelago version 0.6.0 and has been tested against Archipelago 0.6.7.
-- The apworld change: `puz_parser.parse_grid_layout()` plus a `grid` key in slot data (size, black squares, circled squares, title). No other behavior changed.
+**Credits:** the Crossword world is by **jm771 (JHeard)**: https://github.com/jm771/apworld_crossword, MIT licensed. This fork adds one backward-compatible `grid` entry to slot data so clients can draw the puzzle; see [apworld/README.md](apworld/README.md). The web client and tools are new code. Tested with Archipelago 0.6.7 locally and 0.6.8 on archipelago.gg.
