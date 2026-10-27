@@ -3,7 +3,7 @@ Local library of .puz files for pick-up-and-go Crossword games.
 
 Bulk sources are limited to sites whose robots.txt allows automated downloads:
   usa  USA Today daily (archive back to 2010, easier, Mon-Wed NYT level)
-  beq  Brendan Emmett Quigley (~550 puzzles from 2021 on, harder, Thu-Sat NYT level)
+  beq  Brendan Emmett Quigley (~1,930 puzzles from 2008 on, harder, Thu-Sat NYT level)
 Downloads are spaced out (POLITE_DELAY) and never repeated.
 """
 import datetime
@@ -116,7 +116,7 @@ def _stock_beq():
     session = requests.Session()
     session.headers["User-Agent"] = USER_AGENT
     page = 1
-    dead_links = 0   # files before ~#1350 (2021) were taken down; stop once we reach them
+    dead_links = 0   # a long run of missing files means the archive is exhausted
     while dead_links < 20:
         res = session.get(f"{BEQ_SITE}/wp-json/wp/v2/posts",
                           params={"per_page": 10, "page": page, "_fields": "date,title,content"}, timeout=30)

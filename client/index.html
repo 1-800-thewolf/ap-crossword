@@ -354,10 +354,10 @@ function onReceivedItems(pkt) {
   }
   const before = new Set(game.unlocked);
   refresh();
-  for (const c of game.clues) {
-    if (!quiet && game.unlocked.has(c.key) && !before.has(c.key)) {
-      toast(`New clue: ${c.num} ${c.dir === 'A' ? 'Across' : 'Down'}`);
-    }
+  const fresh = game.clues.filter(c => game.unlocked.has(c.key) && !before.has(c.key))
+                          .map(c => `${c.num}${c.dir}`);
+  if (!quiet && fresh.length) {
+    toast(fresh.length === 1 ? `New clue: ${fresh[0]}` : `${fresh.length} new clues: ${fresh.join(', ')}`);
   }
 }
 
@@ -369,6 +369,7 @@ function announceItems(items) {
 }
 
 function playerName(slot) {
+  if (slot === 0) return 'the server';   // /send and other admin commands
   const p = net.players.find(p => p.slot === slot);
   return p ? (p.alias || p.name) : `player ${slot}`;
 }

@@ -20,7 +20,7 @@ The Crossword world is by **jm771 (JHeard)**: https://github.com/jm771/apworld_c
    | Source | Puzzles | Feel |
    |---|---|---|
    | `usa`: USA Today daily | ~6,000 (back to 2010) | Easier, like NYT Mon–Wed |
-   | `beq`: Brendan Emmett Quigley | ~550 (2021 on; older files were taken down) | Harder, like NYT Thu–Sat; Monday themelesses |
+   | `beq`: Brendan Emmett Quigley | ~1,930 (2008 on) | Harder, like NYT Thu–Sat; Monday themelesses |
 
    These are the free sources whose `robots.txt` allows automated downloads. Herbach's archive (WSJ, Universal) is linked from Crossword Fiend and Daily Crossword Links, but it blocks bots, so it isn't used. Puzzles that don't fit the Crossword world (diagramless and other odd grids) are skipped automatically.
 3. **NYT Mini (optional):** free, no login. Menu option 3, or `get_crossword.bat nytm`, grabs the current Mini. NYT posts the next day's Mini in the evening, so you may get tomorrow's.

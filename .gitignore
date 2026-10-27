@@ -8,6 +8,7 @@ library/
 
 # Private notes and local state
 drafts/
+rehearsal/
 .claude/
 tools/.venv/
 tools/settings.json
